@@ -1,0 +1,344 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/journaling_controller.dart';
+import '../models/individual_log_model.dart';
+import '../core/constants.dart';
+
+class IndividualLogScreen extends StatefulWidget {
+  const IndividualLogScreen({super.key});
+
+  @override
+  State<IndividualLogScreen> createState() => _IndividualLogScreenState();
+}
+
+class _IndividualLogScreenState extends State<IndividualLogScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _situationController = TextEditingController();
+  final _thoughtController = TextEditingController();
+  final _physicalSensationController = TextEditingController();
+  final _behaviorController = TextEditingController();
+  
+  String? _selectedEmotion;
+  int _stressLevel = 5;
+  double _sleepHours = 8.0;
+
+  @override
+  void dispose() {
+    _situationController.dispose();
+    _thoughtController.dispose();
+    _physicalSensationController.dispose();
+    _behaviorController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitLog() async {
+    if (_formKey.currentState!.validate() && _selectedEmotion != null) {
+      final log = IndividualEmotionalLog(
+        situation: _situationController.text.trim(),
+        thought: _thoughtController.text.trim(),
+        emotion: _selectedEmotion!,
+        physicalSensation: _physicalSensationController.text.trim().isEmpty 
+            ? null : _physicalSensationController.text.trim(),
+        behavior: _behaviorController.text.trim().isEmpty 
+            ? null : _behaviorController.text.trim(),
+        stressLevel: _stressLevel,
+        sleepQualityHours: _sleepHours,
+      );
+
+      final journalingController = Provider.of<JournalingController>(context, listen: false);
+      final success = await journalingController.submitIndividualLog(log);
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Individual log submitted successfully!'),
+            backgroundColor: Color(0xFF41644A),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } else if (_selectedEmotion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an emotion'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Individual Log'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF20263F),
+        elevation: 0,
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Situation
+              TextFormField(
+                controller: _situationController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Situation *',
+                  hintText: 'Describe what happened...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFF8C662)),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please describe the situation';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Thought
+              TextFormField(
+                controller: _thoughtController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Thought *',
+                  hintText: 'What went through your mind?',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFF8C662)),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please describe your thought';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Emotion Selector
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Emotion *',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF20263F),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: AppConstants.emotions.map((emotion) {
+                        final isSelected = _selectedEmotion == emotion;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedEmotion = emotion;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFF8C662) : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFFF8C662) : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Text(
+                              emotion.toLowerCase().replaceAll('_', ' '),
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF20263F),
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Physical Sensation (Optional)
+              TextFormField(
+                controller: _physicalSensationController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Physical Sensation (Optional)',
+                  hintText: 'How did your body feel?',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFF8C662)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Behavior (Optional)
+              TextFormField(
+                controller: _behaviorController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Behavior (Optional)',
+                  hintText: 'What did you do?',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFF8C662)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Stress Level Slider
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Stress Level: $_stressLevel/10',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF20263F),
+                      ),
+                    ),
+                    Slider(
+                      value: _stressLevel.toDouble(),
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      activeColor: const Color(0xFFF8C662),
+                      onChanged: (value) {
+                        setState(() {
+                          _stressLevel = value.round();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Sleep Hours Slider
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sleep Quality: ${_sleepHours.toStringAsFixed(1)} hours',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF20263F),
+                      ),
+                    ),
+                    Slider(
+                      value: _sleepHours,
+                      min: 0,
+                      max: 12,
+                      divisions: 24,
+                      activeColor: const Color(0xFFF8C662),
+                      onChanged: (value) {
+                        setState(() {
+                          _sleepHours = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              // Submit Button
+              Consumer<JournalingController>(
+                builder: (context, controller, child) {
+                  return ElevatedButton(
+                    onPressed: controller.isLoading ? null : _submitLog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF41644A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: controller.isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Submit Log',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                  );
+                },
+              ),
+              
+              // Error Message
+              Consumer<JournalingController>(
+                builder: (context, controller, child) {
+                  if (controller.errorMessage != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        controller.errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
