@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/task_controller.dart';
+import 'task_detail_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              // Navigator.of(context).pushNamed('/profile');
+               Navigator.of(context).pushNamed('/profile');
             },
           ),
         ],
@@ -516,72 +517,90 @@ class _TaskList extends StatelessWidget {
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final task = tasks[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF20263F),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(task.status),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      task.status.toLowerCase(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+
+return GestureDetector(
+  onTap: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TaskDetailScreen(task: task),
+      ),
+    );
+  },
+  child: Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                task.title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF20263F),
+                ),
               ),
-              if (task.description != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  task.description!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: _getStatusColor(task.status),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                task.status.toLowerCase(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-              if (task.dueDate != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Pendente: ${_formatDate(task.dueDate!)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF595082),
-                  ),
-                ),
-              ],
-            ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Color(0xFF595082),
+            ),
+          ],
+        ),
+        if (task.description != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            task.description!,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-        );
+        ],
+        if (task.dueDate != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Due: ${_formatDate(task.dueDate!)}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF595082),
+            ),
+          ),
+        ],
+      ],
+    ),
+  ),
+);
       },
     );
   }

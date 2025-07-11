@@ -25,9 +25,9 @@ class AppConstants {
   static const String intimateContactLevel = 'INTIMATE_CONTACT';
   
   // Task Status
-  static const String pendingStatus = 'PENDING';
-  static const String completedStatus = 'COMPLETED';
-  static const String delayedStatus = 'DELAYED';
+  static const String pendingStatus = 'PENDIENTE';
+  static const String completedStatus = 'COMPLETADO';
+  static const String delayedStatus = 'DEMORADO';
   
   // Task Types
   static const String communicationTask = 'COMMUNICATION_EXERCISE';
@@ -44,7 +44,7 @@ class AppConstants {
 
 class MockConstants {
   // Mock credentials
-  static const String mockEmail = 'admin';
+  static const String mockEmail = 'admin@cloudlove.com';
   static const String mockPassword = 'admin';
   
   // Enable/disable mock mode
@@ -56,7 +56,7 @@ class MockConstants {
     'email': 'admin@cloudlove.com',
     'firstName': 'Admin',
     'lastName': 'User',
-    'profilePictureUrl': 'https://via.placeholder.com/150',
+    'profilePictureUrl': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fchisellabs.com%2Fglossary%2Fwhat-is-user%2F&psig=AOvVaw3PBKbjWEP1qTKgYtSD-_Ri&ust=1752353138327000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCMCi96bWtY4DFQAAAAAdAAAAABAE',
   };
   
   // Mock token

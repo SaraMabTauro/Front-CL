@@ -49,7 +49,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Interaction log submitted successfully!'),
+            content: Text('Registro de interacción enviado exitosamente!'),
             backgroundColor: Color(0xFF213722),
           ),
         );
@@ -58,7 +58,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields'),
+          content: Text('Por favor, rellene todos los campos obligatorios'),
           backgroundColor: Colors.red,
         ),
       );
@@ -70,7 +70,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Interaction Log'),
+        title: const Text('Registro de Interacción'),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF20263F),
         elevation: 0,
@@ -87,8 +87,8 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 controller: _descriptionController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  labelText: 'Interaction Description *',
-                  hintText: 'Describe what happened during this interaction...',
+                  labelText: 'Descripcion de la Interacción *',
+                  hintText: 'Describe lo que sucedió durante esta interacción....',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -99,7 +99,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please describe the interaction';
+                    return 'Por favor describe la interacción';
                   }
                   return null;
                 },
@@ -108,7 +108,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // Interaction Type
               _buildDropdownField(
-                label: 'Interaction Type *',
+                label: 'Tipo de Interacción *',
                 value: _selectedInteractionType,
                 items: const [
                   AppConstants.conflictType,
@@ -126,7 +126,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // My Communication Style
               _buildDropdownField(
-                label: 'My Communication Style',
+                label: 'Mi estilo de comunicación',
                 value: _selectedMyCommunicationStyle,
                 items: const [
                   AppConstants.assertiveCommunication,
@@ -144,7 +144,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // Partner Communication Style
               _buildDropdownField(
-                label: 'Partner\'s Communication Style',
+                label: 'Estilo de comunicación de la pareja',
                 value: _selectedPartnerCommunicationStyle,
                 items: const [
                   AppConstants.assertiveCommunication,
@@ -162,7 +162,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // Physical Contact Level
               _buildDropdownField(
-                label: 'Physical Contact Level',
+                label: 'Nivel de contacto físico',
                 value: _selectedPhysicalContactLevel,
                 items: const [
                   AppConstants.noContactLevel,
@@ -180,7 +180,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // My Emotion
               _buildEmotionSelector(
-                label: 'My Emotion *',
+                label: 'Mi Emoción *',
                 selectedEmotion: _selectedMyEmotion,
                 onEmotionSelected: (emotion) {
                   setState(() {
@@ -192,7 +192,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
               
               // Partner Emotion
               _buildEmotionSelector(
-                label: 'Partner\'s Emotion (How you think they felt)',
+                label: 'Emoción de la pareja (cómo crees que se sintió)',
                 selectedEmotion: _selectedPartnerEmotion,
                 onEmotionSelected: (emotion) {
                   setState(() {
@@ -218,7 +218,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                     child: controller.isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
-                            'Submit Interaction Log',
+                            'Enviar registro de interacción',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   );

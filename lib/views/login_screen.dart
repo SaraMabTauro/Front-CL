@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Welcome Back',
+                  'Bienvenido de nuevo',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Sign in to continue your journey',
+                  'Inicia sesión para continuar tu viaje con CloudLove',
                   style: TextStyle(
                     fontSize: 16,
                     color: Color(0xFF595082),
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: authController.isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                              'Sign In',
+                              'Iniciar Sesión',
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                     );
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Navigator.of(context).pushNamed('/register');
                   },
                   child: const Text(
-                    "Don't have an account? Sign Up",
+                    "No tienes una cuenta? Crea una ahora",
                     style: TextStyle(color: Color(0xFF595082)),
                   ),
                 ),

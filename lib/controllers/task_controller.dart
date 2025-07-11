@@ -13,10 +13,10 @@ class TaskController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   List<TaskAssignment> get pendingTasks => 
-      _tasks.where((task) => task.status == 'PENDING').toList();
+      _tasks.where((task) => task.status == 'PENDIENTE').toList();
   
   List<TaskAssignment> get completedTasks => 
-      _tasks.where((task) => task.status == 'COMPLETED').toList();
+      _tasks.where((task) => task.status == 'COMPLETADO').toList();
   
   void _setLoading(bool loading) {
     _isLoading = loading;

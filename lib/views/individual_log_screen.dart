@@ -51,7 +51,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Individual log submitted successfully!'),
+            content: Text('Registro individual enviado correctamente!'),
             backgroundColor: Color(0xFF41644A),
           ),
         );
@@ -60,7 +60,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
     } else if (_selectedEmotion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select an emotion'),
+          content: Text('Por favor seleccione una emoción'),
           backgroundColor: Colors.red,
         ),
       );
@@ -72,7 +72,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Individual Log'),
+        title: const Text('Registro Individual'),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF20263F),
         elevation: 0,
@@ -89,8 +89,8 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 controller: _situationController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: 'Situation *',
-                  hintText: 'Describe what happened...',
+                  labelText: 'Situación *',
+                  hintText: 'Describe que sucede...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -101,7 +101,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please describe the situation';
+                    return 'Por favor describe la situación';
                   }
                   return null;
                 },
@@ -113,8 +113,8 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 controller: _thoughtController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: 'Thought *',
-                  hintText: 'What went through your mind?',
+                  labelText: 'Pensamiento *',
+                  hintText: '¿Qué pasó por tu mente?',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -125,7 +125,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please describe your thought';
+                    return 'Por favor describe tu pensamiento';
                   }
                   return null;
                 },
@@ -143,7 +143,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Emotion *',
+                      'Emoción *',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -195,8 +195,8 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 controller: _physicalSensationController,
                 maxLines: 2,
                 decoration: InputDecoration(
-                  labelText: 'Physical Sensation (Optional)',
-                  hintText: 'How did your body feel?',
+                  labelText: 'Sensación física (Opcional)',
+                  hintText: '¿Cómo se sintió tu cuerpo?',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -213,8 +213,8 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 controller: _behaviorController,
                 maxLines: 2,
                 decoration: InputDecoration(
-                  labelText: 'Behavior (Optional)',
-                  hintText: 'What did you do?',
+                  labelText: 'Comportamiento (Opcional)',
+                  hintText: '¿Qué hiciste?',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -237,7 +237,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Stress Level: $_stressLevel/10',
+                      'Nivel de Estrés: $_stressLevel/10',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -272,7 +272,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sleep Quality: ${_sleepHours.toStringAsFixed(1)} hours',
+                      'Calidad de sueño: ${_sleepHours.toStringAsFixed(1)} horas',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -312,7 +312,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                     child: controller.isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
-                            'Submit Log',
+                            'Enviar registro',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   );
