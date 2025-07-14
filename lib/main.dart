@@ -138,6 +138,7 @@ import 'views/psychologist_dashboard_screen.dart';
 import 'views/create_couple_screen.dart';
 import 'views/couple_detail_screen.dart';
 import 'views/create_sesion_screen.dart';
+import 'views/register_screen.dart';
 
 void main() {
   runApp(const CloudLoveApp());
@@ -168,6 +169,7 @@ class CloudLoveApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/home': (context) => const HomeScreen(),
           '/profile': (context) => const ProfileScreen(),
+          '/register': (context) => const RegisterView(),
           '/individual-log': (context) => const IndividualLogScreen(),
           '/interaction-log': (context) => const InteractionLogScreen(),
           '/psychologist-login': (context) => const PsychologistLoginScreen(),

@@ -342,6 +342,50 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
+    // Registro del psicólogo
+  Future<bool> registerPsychologist({
+    required String correo,
+    required String contrasena,
+    required String nombre,
+    required String apellido,
+    String? fotoPerfilUrl,
+    required String especialidad,
+    required String cedulaProfesional,
+    String? cedulaDocumento,
+    required String telefono,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.post('/auth/psychologist/register', {
+        "correo": correo,
+        "contrasena": contrasena,
+        "nombre": nombre,
+        "apellido": apellido,
+        "fotoPerfilUrl": fotoPerfilUrl,
+        "especialidad": especialidad,
+        "cedulaProfesional": cedulaProfesional,
+        "cedulaDocumento": cedulaDocumento,
+        "telefono": telefono,
+      });
+
+      if (response.statusCode == 201) {
+        _setSuccess('Registro exitoso. Por favor, inicie sesión.');
+        _setLoading(false);
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Error en el registro');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión. Intente nuevamente.');
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Obtener parejas del psicólogo
   Future<void> getCouples() async {
     _setLoading(true);

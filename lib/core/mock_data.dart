@@ -690,7 +690,6 @@ class MockData {
   static const String mockPsychologistPassword = 'psicologo';
 
   // Datos del psicólogo mock
-  // ...existing code...
   static const Map<String, dynamic> mockPsychologist = {
     'id': 1,
     'usuarioId': 100,

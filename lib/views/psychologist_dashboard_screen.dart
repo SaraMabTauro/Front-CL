@@ -1859,10 +1859,51 @@ class _DetailedCoupleCard extends StatelessWidget {
                 ),
               ],
             ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final psychController = Provider.of<PsychologistController>(
+                    context,
+                    listen: false,
+                  );
+                  final request = AIAnalysisRequest(
+                    coupleId: couple.id,
+                    analysisType: 'comprehensive',
+                    parameters: {
+                      'includeRecommendations': true,
+                      'confidenceThreshold': 0.7,
+                      'analysisDepth': 'detailed',
+                    },
+                  );
+                  final result = await psychController.generateAIAnalysis(
+                    request,
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result != null
+                              ? 'Análisis generado exitosamente'
+                              : psychController.errorMessage ??
+                                  'Error al generar análisis',
+                        ),
+                        backgroundColor:
+                            result != null ? Colors.green : Colors.red,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.auto_graph, size: 16),
+                label: const Text('Generar Análisis'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
-
-        
       ),
     );
   }

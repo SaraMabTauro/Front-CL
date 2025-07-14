@@ -4,6 +4,7 @@ import '../controllers/psychologist_controller.dart';
 
 class PsychologistLoginScreen extends StatefulWidget {
   const PsychologistLoginScreen({super.key});
+  static const String routeName = '/psychologist-login'; // Agrega esta línea para definir la ruta
 
   @override
   State<PsychologistLoginScreen> createState() => _PsychologistLoginScreenState();
