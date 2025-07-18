@@ -1,6 +1,8 @@
 class AppConstants {
   // API Base URL
-  static const String baseUrl = 'https://api.cloudlove.com';
+  static const String baseUrl = 'https://auth-users-vgbg.onrender.com';
+  static const String baseUrlTerapia ='https://cl-terapia.onrender.com/parejas';
+  static const String baseUrlGestion = 'https://cl-gestion.onrender.com/';
   
   // Storage Keys
   static const String tokenKey = 'auth_token';
@@ -48,7 +50,7 @@ class MockConstants {
   static const String mockPassword = 'admin';
   
   // Enable/disable mock mode
-  static const bool useMockData = true;
+  static const bool useMockData = false;
   
   // Mock user data
   static const Map<String, dynamic> mockUser = {

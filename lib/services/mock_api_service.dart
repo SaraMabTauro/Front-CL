@@ -12,7 +12,7 @@ class MockApiService {
     await Future.delayed(const Duration(milliseconds: 800));
 
     switch (endpoint) {
-      case '/auth/login':
+      case '/usuario/login':
         return _handleLogin(body);
       case '/users/register':
         return _handleRegister(body);
@@ -74,8 +74,8 @@ class MockApiService {
 
   // Mock handlers
   static http.Response _handleLogin(Map<String, dynamic> body) {
-    final email = body['email'];
-    final password = body['password'];
+    final email = body['correo'] ?? body['email'];
+    final password = body['contrasena'] ?? body['password'];
 
     if (email == MockConstants.mockEmail &&
         password == MockConstants.mockPassword) {

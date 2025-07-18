@@ -15,7 +15,7 @@
 //   final _tituloController = TextEditingController();
 //   final _descripcionController = TextEditingController();
 //   final _objetivosController = TextEditingController();
-  
+
 //   int? _selectedCoupleId;
 //   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
 //   TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
@@ -94,7 +94,6 @@
 //         _selectedTime.hour,
 //         _selectedTime.minute,
 //       );
-
 
 //       final request = CreateSessionRequest (
 //         coupleId: _selectedCoupleId!,
@@ -191,9 +190,9 @@
 //                   ],
 //                 ),
 //               ),
-              
+
 //               const SizedBox(height: 32),
-              
+
 //               // Selección de pareja
 //               Consumer<PsychologistController>(
 //                 builder: (context, psychController, child) {
@@ -253,9 +252,9 @@
 //                   );
 //                 },
 //               ),
-              
+
 //               const SizedBox(height: 20),
-              
+
 //               // Título de la sesión
 //               TextFormField(
 //                 controller: _tituloController,
@@ -277,9 +276,9 @@
 //                   return null;
 //                 },
 //               ),
-              
+
 //               const SizedBox(height: 16),
-              
+
 //               // Descripción
 //               TextFormField(
 //                 controller: _descripcionController,
@@ -297,9 +296,9 @@
 //                   alignLabelWithHint: true,
 //                 ),
 //               ),
-              
+
 //               const SizedBox(height: 20),
-              
+
 //               // Fecha y hora
 //               Row(
 //                 children: [
@@ -392,9 +391,9 @@
 //                   ),
 //                 ],
 //               ),
-              
+
 //               const SizedBox(height: 20),
-              
+
 //               // Duración y tipo
 //               Row(
 //                 children: [
@@ -487,9 +486,9 @@
 //                   ),
 //                 ],
 //               ),
-              
+
 //               const SizedBox(height: 20),
-              
+
 //               // Objetivos
 //               TextFormField(
 //                 controller: _objetivosController,
@@ -507,9 +506,9 @@
 //                   alignLabelWithHint: true,
 //                 ),
 //               ),
-              
+
 //               const SizedBox(height: 32),
-              
+
 //               // Botones de acción
 //               Row(
 //                 children: [
@@ -564,7 +563,7 @@
 //                   ),
 //                 ],
 //               ),
-              
+
 //               // Mensaje de error
 //               Consumer<PsychologistController>(
 //                 builder: (context, psychController, child) {
@@ -600,15 +599,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/psychologist_controller.dart';
-import '../models/session_model.dart'; 
+import '../models/session_model.dart';
 
 class CreateSessionScreen extends StatefulWidget {
   final int? preselectedCoupleId;
 
-  const CreateSessionScreen({
-    Key? key,
-    this.preselectedCoupleId,
-  }) : super(key: key);
+  const CreateSessionScreen({Key? key, this.preselectedCoupleId})
+    : super(key: key);
 
   @override
   State<CreateSessionScreen> createState() => _CreateSessionScreenState();
@@ -631,7 +628,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     super.initState();
     _selectedCoupleId = widget.preselectedCoupleId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final psychController = Provider.of<PsychologistController>(context, listen: false);
+      final psychController = Provider.of<PsychologistController>(
+        context,
+        listen: false,
+      );
       if (psychController.couples.isEmpty) {
         psychController.getCouples();
       }
@@ -686,18 +686,23 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       final request = CreateSessionRequest(
         coupleId: _selectedCoupleId!,
         titulo: _tituloController.text,
-        descripcion: _descripcionController.text.trim().isNotEmpty 
-            ? _descripcionController.text 
-            : null,
+        descripcion:
+            _descripcionController.text.trim().isNotEmpty
+                ? _descripcionController.text
+                : null,
         fechaHora: fechaHora,
         duracionMinutos: _duracionMinutos,
         tipo: _selectedType,
-        objetivos: _objetivosController.text.trim().isNotEmpty 
-            ? _objetivosController.text 
-            : null,
+        objetivos:
+            _objetivosController.text.trim().isNotEmpty
+                ? _objetivosController.text
+                : null,
       );
 
-      final psychController = Provider.of<PsychologistController>(context, listen: false);
+      final psychController = Provider.of<PsychologistController>(
+        context,
+        listen: false,
+      );
       final success = await psychController.createSession(request);
 
       if (success) {
@@ -714,7 +719,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(psychController.errorMessage ?? 'Error al crear sesión'),
+              content: Text(
+                psychController.errorMessage ?? 'Error al crear sesión',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -765,12 +772,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                               labelText: 'Seleccionar pareja',
                               border: OutlineInputBorder(),
                             ),
-                            items: psychController.couples.map((couple) {
-                              return DropdownMenuItem<int>(
-                                value: couple.id,
-                                child: Text('Pareja ${couple.id}'),
-                              );
-                            }).toList(),
+                            items:
+                                psychController.couples.map((couple) {
+                                  return DropdownMenuItem<int>(
+                                    value: couple.id,
+                                    child: Text(
+                                      '${couple.nombreCliente1 ?? 'Cliente 1'} & ${couple.cliente2Id ?? 'Cliente 2'}',
+                                    ),
+                                  );
+                                }).toList(),
                             onChanged: (value) {
                               setState(() {
                                 _selectedCoupleId = value;
@@ -914,12 +924,13 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                               labelText: 'Tipo de sesión',
                               border: OutlineInputBorder(),
                             ),
-                            items: SessionType.values.map((type) {
-                              return DropdownMenuItem<SessionType>(
-                                value: type,
-                                child: Text(_getSessionTypeLabel(type)),
-                              );
-                            }).toList(),
+                            items:
+                                SessionType.values.map((type) {
+                                  return DropdownMenuItem<SessionType>(
+                                    value: type,
+                                    child: Text(_getSessionTypeLabel(type)),
+                                  );
+                                }).toList(),
                             onChanged: (value) {
                               if (value != null) {
                                 setState(() {
@@ -936,11 +947,26 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                               border: OutlineInputBorder(),
                             ),
                             items: const [
-                              DropdownMenuItem(value: 30, child: Text('30 minutos')),
-                              DropdownMenuItem(value: 45, child: Text('45 minutos')),
-                              DropdownMenuItem(value: 60, child: Text('1 hora')),
-                              DropdownMenuItem(value: 90, child: Text('1.5 horas')),
-                              DropdownMenuItem(value: 120, child: Text('2 horas')),
+                              DropdownMenuItem(
+                                value: 30,
+                                child: Text('30 minutos'),
+                              ),
+                              DropdownMenuItem(
+                                value: 45,
+                                child: Text('45 minutos'),
+                              ),
+                              DropdownMenuItem(
+                                value: 60,
+                                child: Text('1 hora'),
+                              ),
+                              DropdownMenuItem(
+                                value: 90,
+                                child: Text('1.5 horas'),
+                              ),
+                              DropdownMenuItem(
+                                value: 120,
+                                child: Text('2 horas'),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value != null) {
@@ -960,7 +986,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: psychController.isLoading ? null : _createSession,
+                      onPressed:
+                          psychController.isLoading ? null : _createSession,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[700],
                         foregroundColor: Colors.white,
@@ -969,12 +996,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: psychController.isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Crear Sesión',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                      child:
+                          psychController.isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text(
+                                'Crear Sesión',
+                                style: TextStyle(fontSize: 16),
+                              ),
                     ),
                   ),
                 ],

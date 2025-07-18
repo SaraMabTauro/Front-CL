@@ -2229,9 +2229,9 @@ void _loadCoupleData() {
                               listen: false,
                             );
                         final success = await psychController.updateCouple(
-                          _couple!.id,
-                          selectedStatus,
-                          objetivosController.text,
+                          parejaId: _couple!.id,
+                          estatus: selectedStatus.name,
+                          objetivosTerapia: objetivosController.text,
                         );
 
                         if (success && context.mounted) {

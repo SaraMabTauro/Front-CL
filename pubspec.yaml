@@ -44,7 +44,7 @@ dependencies:
   smooth_page_indicator: ^1.2.1
   flutter_secure_storage: ^9.0.0
   image_picker: ^1.1.2
-
+  cloudinary_public: ^0.23.1
 
 
 dev_dependencies:

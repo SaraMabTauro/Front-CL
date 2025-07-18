@@ -106,7 +106,7 @@ class DashboardTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bienvenido de nuevo, ${user?.firstName ?? 'User'}!',
+                      'Bienvenido de nuevo, ${user?.nombre ?? 'User'}!',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

@@ -4,7 +4,7 @@ import '../controllers/psychologist_controller.dart';
 
 class PsychologistLoginScreen extends StatefulWidget {
   const PsychologistLoginScreen({super.key});
-  static const String routeName = '/psychologist-login'; // Agrega esta línea para definir la ruta
+  static const String routeName = '/psychologist-login'; 
 
   @override
   State<PsychologistLoginScreen> createState() => _PsychologistLoginScreenState();
@@ -206,47 +206,16 @@ class _PsychologistLoginScreenState extends State<PsychologistLoginScreen> {
                   },
                 ),
                 
-                const SizedBox(height: 32),
-                
-                // Información de credenciales mock
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Credenciales de Prueba:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Usuario: psicologo\nContraseña: psicologo',
-                        style: TextStyle(
-                          color: Colors.blue.shade700,
-                          fontFamily: 'monospace',
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
                 
                 const SizedBox(height: 24),
-                
-                // Link para volver al login de clientes
+                  
+                //Register Link
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacementNamed('/login');
+                    Navigator.of(context).pushNamed('/register');
                   },
                   child: const Text(
-                    '¿Eres cliente? Inicia sesión aquí',
+                    "No tienes cuenta? Crea una ahora",
                     style: TextStyle(color: Color(0xFF595082)),
                   ),
                 ),

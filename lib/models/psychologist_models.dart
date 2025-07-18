@@ -23,7 +23,10 @@ class Psychologist {
   final String nombre;
   final String apellido;
   final String correo;
+  final String contrasena;
   final String? fotoPerfilUrl;
+  final String telefono;
+  final DateTime? fechaCreacion;
 
   Psychologist({
     required this.id,
@@ -35,23 +38,60 @@ class Psychologist {
     required this.nombre,
     required this.apellido,
     required this.correo,
+    required this.contrasena,
     this.fotoPerfilUrl,
+    required this.telefono,
+    this.fechaCreacion,
   });
+
+  // CORRECIÓN: Añade un método copyWith. Es fundamental para manejar el estado inmutable.
+  Psychologist copyWith({
+    int? id,
+    int? usuarioId,
+    String? cedulaProfesional,
+    String? cedulaDocumentoUrl,
+    LicenseStatus? estadoLicencia,
+    String? especialidad,
+    String? nombre,
+    String? apellido,
+    String? correo,
+    String? contrasena,
+    String? fotoPerfilUrl,
+    String? telefono,
+    DateTime? fechaCreacion,
+  }){
+    return Psychologist(
+      id: id ?? this.id,
+      usuarioId: usuarioId ?? this.usuarioId,
+      cedulaProfesional: cedulaProfesional ?? this.cedulaProfesional,
+      cedulaDocumentoUrl: cedulaDocumentoUrl ?? this.cedulaDocumentoUrl,
+      estadoLicencia: estadoLicencia ?? this.estadoLicencia,
+      especialidad: especialidad ?? this.especialidad,
+      nombre: nombre ?? this.nombre,
+      apellido: apellido ?? this.apellido,
+      correo: correo ?? this.correo,
+      contrasena: contrasena ?? this.contrasena,
+      fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
+      telefono: telefono ?? this.telefono,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+    );
+  } 
 
   factory Psychologist.fromJson(Map<String, dynamic> json) {
     return Psychologist(
       id: json['id'],
-      usuarioId: json['usuarioId'],
+      usuarioId: json['usuarioId'] ?? 0,
       cedulaProfesional: json['cedulaProfesional'],
-      cedulaDocumentoUrl: json['cedulaDocumentoUrl'],
-      estadoLicencia: LicenseStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == json['estadoLicencia']
-      ),
+      cedulaDocumentoUrl: json['cedulaDocumentoUrl'] ?? json['cedulaDocumento'],
+      estadoLicencia: LicenseStatus.pendiente,
       especialidad: json['especialidad'],
       nombre: json['nombre'],
       apellido: json['apellido'],
       correo: json['correo'],
+      contrasena: json['contrasena'],
       fotoPerfilUrl: json['fotoPerfilUrl'],
+      telefono: json['telefono'] ?? '',
+      fechaCreacion: json['fechaCreacion'],
     );
   }
 
@@ -66,7 +106,10 @@ class Psychologist {
       'nombre': nombre,
       'apellido': apellido,
       'correo': correo,
+      'contrasena': contrasena,
       'fotoPerfilUrl': fotoPerfilUrl,
+      'telefono': telefono,
+      'fechaCreacion': fechaCreacion,
     };
   }
 }

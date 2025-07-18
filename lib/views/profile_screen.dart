@@ -28,9 +28,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = authController.currentUser;
     
     if (user != null) {
-      _firstNameController.text = user.firstName;
-      _lastNameController.text = user.lastName;
-      _emailController.text = user.email;
+      _firstNameController.text = user.nombre;
+      _lastNameController.text = user.apellido;
+      _emailController.text = user.correo;
     }
   }
 
@@ -49,9 +49,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       if (currentUser != null) {
         final updatedUser = currentUser.copyWith(
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          email: _emailController.text.trim(),
+          nombre: _firstNameController.text.trim(),
+          apellido: _lastNameController.text.trim(),
+          correo: _emailController.text.trim(),
         );
         
         final success = await authController.updateUserProfile(updatedUser);
@@ -112,9 +112,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           if (!_isEditing) {
-            _firstNameController.text = user.firstName;
-            _lastNameController.text = user.lastName;
-            _emailController.text = user.email;
+            _firstNameController.text = user.nombre;
+            _lastNameController.text = user.apellido;
+            _emailController.text = user.correo;
           }
 
           return SingleChildScrollView(
@@ -135,21 +135,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 3,
                       ),
                     ),
-                    child: user.profilePictureUrl != null
-                        ? ClipOval(
-                            child: Image.network(
-                              user.profilePictureUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Color(0xFFF8C662),
-                                );
-                              },
-                            ),
-                          )
-                        : const Icon(
+                    child: 
+                         const Icon(
                             Icons.person,
                             size: 60,
                             color: Color(0xFFF8C662),

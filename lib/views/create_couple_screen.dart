@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/psychologist_controller.dart';
-import '../models/psychologist_models.dart';
+import '../controllers/auth_controller.dart';
 
 class CreateCoupleScreen extends StatefulWidget {
   const CreateCoupleScreen({super.key});
@@ -12,17 +12,17 @@ class CreateCoupleScreen extends StatefulWidget {
 
 class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controladores para Cliente 1
   final _nombreCliente1Controller = TextEditingController();
   final _apellidoCliente1Controller = TextEditingController();
   final _correoCliente1Controller = TextEditingController();
-  
+
   // Controladores para Cliente 2
   final _nombreCliente2Controller = TextEditingController();
   final _apellidoCliente2Controller = TextEditingController();
   final _correoCliente2Controller = TextEditingController();
-  
+
   // Controlador para objetivos
   final _objetivosController = TextEditingController();
 
@@ -40,19 +40,57 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
 
   Future<void> _createCouple() async {
     if (_formKey.currentState!.validate()) {
-      final request = CreateCoupleRequest(
-        nombreCliente1: _nombreCliente1Controller.text.trim(),
-        apellidoCliente1: _apellidoCliente1Controller.text.trim(),
-        correoCliente1: _correoCliente1Controller.text.trim(),
-        nombreCliente2: _nombreCliente2Controller.text.trim(),
-        apellidoCliente2: _apellidoCliente2Controller.text.trim(),
-        correoCliente2: _correoCliente2Controller.text.trim(),
-        objetivosTerapia: _objetivosController.text.trim(),
+      final psychController = Provider.of<PsychologistController>(
+        context,
+        listen: false,
+      );
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
       );
 
-      final psychController = Provider.of<PsychologistController>(context, listen: false);
-      final success = await psychController.createCouple(request);
+      final psicologoId = psychController.currentPsychologist?.id;
+      if (psicologoId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Debe seleccionar un psicólogo'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
+      // Registrar Cliente 1
+      final user1 = await authController.registerClient(
+        correo: _correoCliente1Controller.text.trim(),
+        username: _nombreCliente1Controller.text.trim(),
+        contrasena: '123456', // O pide la contraseña
+        nombre: _nombreCliente1Controller.text.trim(),
+        apellido: _apellidoCliente1Controller.text.trim(),
+        rol: 'paciente',
+        idPsicologo: psicologoId,
+      );
+      if (user1 == null) return;
+
+      // Registrar Cliente 2
+      final user2 = await authController.registerClient(
+        correo: _correoCliente2Controller.text.trim(),
+        username: _nombreCliente2Controller.text.trim(),
+        contrasena: '123456', // O pide la contraseña
+        nombre: _nombreCliente2Controller.text.trim(),
+        apellido: _apellidoCliente2Controller.text.trim(),
+        rol: 'paciente',
+        idPsicologo: psicologoId,
+      );
+      if (user2 == null) return;
+
+      // Crear pareja
+      final success = await psychController.createCouple(
+        id: 0, // O el id que corresponda
+        idParejaA: user1.id,
+        idParejaB: user2.id,
+        objetivosTerapia: _objetivosController.text.trim(),
+      );
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -109,17 +147,15 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Complete la información de ambos miembros de la pareja para crear su perfil terapéutico.',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                      ),
+                      style: TextStyle(color: Colors.blue.shade700),
                       textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Cliente 1
               Container(
                 padding: const EdgeInsets.all(20),
@@ -155,9 +191,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     Row(
                       children: [
                         Expanded(
@@ -170,7 +206,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Color(0xFF595082)),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF595082),
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -192,7 +230,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Color(0xFF595082)),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF595082),
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -205,9 +245,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _correoCliente1Controller,
                       keyboardType: TextInputType.emailAddress,
@@ -219,14 +259,18 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFF595082)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF595082),
+                          ),
                         ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Por favor ingrese el correo';
                         }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
                           return 'Ingrese un correo válido';
                         }
                         return null;
@@ -235,9 +279,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Cliente 2
               Container(
                 padding: const EdgeInsets.all(20),
@@ -273,9 +317,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     Row(
                       children: [
                         Expanded(
@@ -288,7 +332,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Color(0xFF595082)),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF595082),
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -310,7 +356,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Color(0xFF595082)),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF595082),
+                                ),
                               ),
                             ),
                             validator: (value) {
@@ -323,9 +371,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _correoCliente2Controller,
                       keyboardType: TextInputType.emailAddress,
@@ -337,17 +385,22 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFF595082)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF595082),
+                          ),
                         ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Por favor ingrese el correo';
                         }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
                           return 'Ingrese un correo válido';
                         }
-                        if (value.trim() == _correoCliente1Controller.text.trim()) {
+                        if (value.trim() ==
+                            _correoCliente1Controller.text.trim()) {
                           return 'Los correos deben ser diferentes';
                         }
                         return null;
@@ -356,9 +409,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Objetivos de Terapia
               Container(
                 padding: const EdgeInsets.all(20),
@@ -394,21 +447,24 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     TextFormField(
                       controller: _objetivosController,
                       maxLines: 4,
                       decoration: InputDecoration(
                         labelText: 'Objetivos y Metas Terapéuticas *',
-                        hintText: 'Describa los objetivos principales que se trabajarán con esta pareja...',
+                        hintText:
+                            'Describa los objetivos principales que se trabajarán con esta pareja...',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFF595082)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF595082),
+                          ),
                         ),
                         alignLabelWithHint: true,
                       ),
@@ -425,9 +481,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Botones de acción
               Row(
                 children: [
@@ -458,7 +514,8 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                     child: Consumer<PsychologistController>(
                       builder: (context, psychController, child) {
                         return ElevatedButton(
-                          onPressed: psychController.isLoading ? null : _createCouple,
+                          onPressed:
+                              psychController.isLoading ? null : _createCouple,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF595082),
                             foregroundColor: Colors.white,
@@ -467,22 +524,25 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: psychController.isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text(
-                                  'Crear Pareja',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                          child:
+                              psychController.isLoading
+                                  ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                  : const Text(
+                                    'Crear Pareja',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
                         );
                       },
                     ),
                   ),
                 ],
               ),
-              
+
               // Mensaje de error
               Consumer<PsychologistController>(
                 builder: (context, psychController, child) {
