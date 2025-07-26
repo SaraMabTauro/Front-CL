@@ -657,7 +657,7 @@ class MockApiService {
   static http.Response _handleGenerateAnalysis(Map<String, dynamic> body) {
     // Simular generación de análisis con IA
     final coupleId = body['coupleId'];
-    final tipoAnalisis = body['tipoAnalisis'];
+    // final tipoAnalisis = body['tipoAnalisis'];
 
     final newAnalysis = {
       'id': MockData.mockCouplesAnalysis.length + 1,

@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import '../controllers/task_controller.dart';
 import '../models/task_model.dart';
 import '../core/constants.dart';
+import '../controllers/auth_controller.dart';
 
 class TaskDetailScreen extends StatefulWidget {
-  final TaskAssignment task;
+  final Tarea task;
 
   const TaskDetailScreen({super.key, required this.task});
 
@@ -16,7 +17,7 @@ class TaskDetailScreen extends StatefulWidget {
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _commentsController = TextEditingController();
-  
+
   int _satisfactionRating = 3;
   int _difficultyRating = 3;
   int _utilityRating = 3;
@@ -28,26 +29,41 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _completeTask() async {
-    if (_formKey.currentState!.validate()) {
-      final feedback = TaskFeedback(
-        satisfactionRating: _satisfactionRating,
-        difficultyRating: _difficultyRating,
-        utilityRating: _utilityRating,
-        comments: _commentsController.text.trim().isEmpty 
-            ? null : _commentsController.text.trim(),
-      );
+    if (_formKey.currentState!.validate() ?? false) {
+      return;
+    }
+    final taskController = Provider.of<TaskController>(context, listen: false);
+    final authController = Provider.of<AuthController>(context, listen: false);
 
-      final taskController = Provider.of<TaskController>(context, listen: false);
-      final success = await taskController.completeTask(widget.task.id, feedback);
-      
-      if (success && mounted) {
+    final success = await taskController.submitFeedbackAndCompleteTask(
+      task: widget.task,
+      authController: authController,
+      satisfaction: _satisfactionRating,
+      difficulty: _difficultyRating,
+      utility: _utilityRating,
+      comments:
+          _commentsController.text.trim().isEmpty
+              ? null
+              : _commentsController.text.trim(),
+    );
+
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Task completed successfully!'),
+            content: Text('¡Tarea completada y retroalimentación enviada!'),
             backgroundColor: Color(0xFF41644A),
           ),
         );
         Navigator.of(context).pop();
+      } else {
+        // Mostramos el error específico que viene del controlador
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(taskController.errorMessage ?? 'Ocurrió un error.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -65,7 +81,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
-  IconData _getTaskTypeIcon(String taskType) {
+  IconData _getTaskTypeIcon(TaskType taskType) {
     switch (taskType) {
       case AppConstants.communicationTask:
         return Icons.chat_bubble_outline;
@@ -81,19 +97,41 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   String _formatTaskType(String taskType) {
-    return taskType.toLowerCase().replaceAll('_', ' ').split(' ').map((word) {
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return taskType
+        .toLowerCase()
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) {
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  Widget _getTaskStatusIcon(String status) {
+    switch (status) {
+      case 'pendiente':
+        return const Icon(
+          Icons.hourglass_empty_rounded,
+          color: Colors.blueAccent,
+        );
+      case 'completada':
+        return const Icon(Icons.check_circle_rounded, color: Colors.green);
+      case 'Declinada':
+        return const Icon(Icons.error_rounded, color: Colors.redAccent);
+      default:
+        // Un ícono por defecto por si llega un estado inesperado
+        return const Icon(Icons.task_alt_rounded, color: Colors.grey);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isCompleted = widget.task.status == AppConstants.completedStatus;
-    
+    final isCompleted = widget.task.estado == AppConstants.completedStatus;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -133,12 +171,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: _getStatusColor(widget.task.status).withOpacity(0.2),
+                          color: _getStatusColor(
+                            widget.task.estado,
+                          ).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
-                          _getTaskTypeIcon(widget.task.taskType),
-                          color: _getStatusColor(widget.task.status),
+                          _getTaskTypeIcon(widget.task.type),
+                          color: _getStatusColor(widget.task.estado),
                           size: 28,
                         ),
                       ),
@@ -148,7 +188,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.task.title,
+                              widget.task.titulo,
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -157,7 +197,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _formatTaskType(widget.task.taskType),
+                              _formatTaskType(widget.task.type.toString()),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -172,11 +212,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(widget.task.status),
+                          color: _getStatusColor(widget.task.estado),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.task.status.toLowerCase(),
+                          widget.task.estado.toLowerCase(),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.white,
@@ -187,8 +227,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
-                  if (widget.task.dueDate != null) ...[
+
+                  if (widget.task.fechaLimite != null) ...[
                     Row(
                       children: [
                         Icon(
@@ -198,7 +238,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Due: ${_formatDate(widget.task.dueDate!)}',
+                          'Fecha límite: ${_formatDate(widget.task.fechaLimite)}',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -208,10 +248,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   const Divider(),
                   const SizedBox(height: 16),
-                  
+
                   const Text(
                     'Description',
                     style: TextStyle(
@@ -222,7 +262,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.task.description ?? 'No description available.',
+                    widget.task.descripcion ?? 'No description available.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],
@@ -233,7 +273,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Completion Form (only if not completed)
             if (!isCompleted) ...[
               Container(
@@ -258,7 +298,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Complete Task',
+                        'Completar Tarea',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -266,10 +306,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Satisfaction Rating
                       _RatingSection(
-                        title: 'How satisfied are you with this task?',
+                        title: '¿Qué tan satisfecho está usted con esta tarea?',
                         value: _satisfactionRating,
                         onChanged: (value) {
                           setState(() {
@@ -279,10 +319,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         color: const Color(0xFF41644A),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Difficulty Rating
                       _RatingSection(
-                        title: 'How difficult was this task?',
+                        title: '¿Qué tan difícil fue esta tarea?',
                         value: _difficultyRating,
                         onChanged: (value) {
                           setState(() {
@@ -292,10 +332,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         color: const Color(0xFFF8C662),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Utility Rating
                       _RatingSection(
-                        title: 'How useful was this task?',
+                        title: '¿Qué tan útil fue esta tarea?',
                         value: _utilityRating,
                         onChanged: (value) {
                           setState(() {
@@ -305,54 +345,64 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         color: const Color(0xFF595082),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Comments
                       TextFormField(
                         controller: _commentsController,
                         maxLines: 4,
                         decoration: InputDecoration(
-                          labelText: 'Additional Comments (Optional)',
-                          hintText: 'Share your thoughts about this task...',
+                          labelText: 'Comentarios adicionales (Opcional)',
+                          hintText: 'Comparte tu opinión sobre esta tarea...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFF8C662)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFF8C662),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Complete Button
                       Consumer<TaskController>(
                         builder: (context, taskController, child) {
                           return SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: taskController.isLoading ? null : _completeTask,
+                              onPressed:
+                                  taskController.isLoading
+                                      ? null
+                                      : _completeTask,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF41644A),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: taskController.isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text(
-                                      'Complete Task',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                              child:
+                                  taskController.isLoading
+                                      ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                      : const Text(
+                                        'Complete Task',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
                             ),
                           );
                         },
                       ),
-                      
+
                       // Error Message
                       Consumer<TaskController>(
                         builder: (context, taskController, child) {
@@ -381,7 +431,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF41644A).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF41644A).withOpacity(0.3)),
+                  border: Border.all(
+                    color: const Color(0xFF41644A).withOpacity(0.3),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -392,7 +444,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'Task Completed!',
+                      'Tarea Completada!',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -401,11 +453,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Great job! You have successfully completed this task.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF41644A),
-                      ),
+                      'Gran trabajo! Has completado esta tarea con éxito.',
+                      style: TextStyle(fontSize: 14, color: Color(0xFF41644A)),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -469,7 +518,8 @@ class _RatingSection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: rating <= value ? Colors.white : Colors.grey.shade600,
+                      color:
+                          rating <= value ? Colors.white : Colors.grey.shade600,
                     ),
                   ),
                 ),

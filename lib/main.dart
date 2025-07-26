@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:smart_habits/views/profile_psico_screen.dart';
+import 'package:smart_habits/views/profile_psico_screen.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/journaling_controller.dart';
 import 'controllers/task_controller.dart';
@@ -17,6 +17,7 @@ import 'views/create_couple_screen.dart';
 import 'views/couple_detail_screen.dart';
 import 'views/create_sesion_screen.dart';
 import 'views/register_screen.dart';
+import 'views/create_task_screen.dart';
 
 void main() {
   runApp(const CloudLoveApp());
@@ -35,6 +36,7 @@ class CloudLoveApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PsychologistController()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'CloudLove',
         theme: ThemeData(
           primarySwatch: Colors.orange,
@@ -54,7 +56,8 @@ class CloudLoveApp extends StatelessWidget {
           '/psychologist-dashboard': (context) => const PsychologistDashboardScreen(),
           '/create-couple': (context) => const CreateCoupleScreen(),
           '/create-session': (context) => const CreateSessionScreen(),
-          // '/profile-psicologist': (context) => const PsychologistProfileView(),
+          '/profile-psicologist': (context) => const PsychologistProfileView(),
+          '/create-task': (context) => const CreateTaskScreen(),
 
         },
         onGenerateRoute: (settings) {

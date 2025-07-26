@@ -7,6 +7,8 @@ class User {
   final String apellido;
   final String rol;
   final int idPsicologo;
+  final int? parejaId;
+  final String fechaCreacion;
 
   User({
     required this.id,
@@ -17,6 +19,8 @@ class User {
     required this.apellido,
     required this.rol,
     required this.idPsicologo,
+    this.parejaId,
+    required this.fechaCreacion,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -28,7 +32,8 @@ class User {
       nombre: json['nombre'],
       apellido: json['apellido'],
       rol: json['rol'],
-      idPsicologo: json['idPsicologo'] ?? 0, // Default
+      idPsicologo: json['idPsicologo'] ?? 0, 
+      fechaCreacion: json['fechaCreacion'],
     );
   }
 
@@ -42,6 +47,8 @@ class User {
       'apellido': apellido,
       'rol': rol,
       'idPsicologo': idPsicologo,
+      'parejaId': parejaId,
+      'fechaCreacion': fechaCreacion,
     };
   }
 
@@ -54,6 +61,8 @@ class User {
     String? apellido,
     String? rol,
     int? idPsicologo,
+    int? parejaId,
+    String? fechaCreacion,
   }) {
     return User(
       id: id ?? this.id,
@@ -64,6 +73,24 @@ class User {
       apellido: apellido ?? this.apellido,
       rol: rol ?? this.rol,
       idPsicologo: idPsicologo ?? this.idPsicologo,
+      parejaId: parejaId ?? this.parejaId,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+    );
+  }
+}
+
+class Client {
+  final int id;
+  final String nombre;
+  final String apellido;
+
+  Client({required this.id, required this.nombre, required this.apellido});
+
+  factory Client.fromJson(Map<String, dynamic> json) {
+    return Client(
+      id: json['id'],
+      nombre: json['nombre'],
+      apellido: json['apellido'],
     );
   }
 }

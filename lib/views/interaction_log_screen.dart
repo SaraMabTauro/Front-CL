@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/journaling_controller.dart';
-import '../models/interaction_log_model.dart';
+import '../controllers/auth_controller.dart';
 import '../core/constants.dart';
 
 class InteractionLogScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class InteractionLogScreen extends StatefulWidget {
 class _InteractionLogScreenState extends State<InteractionLogScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
-  
+
   String? _selectedInteractionType;
   String? _selectedMyCommunicationStyle;
   String? _selectedPartnerCommunicationStyle;
@@ -28,25 +28,49 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
     super.dispose();
   }
 
-  Future<void> _submitLog() async {
-    if (_formKey.currentState!.validate() && 
-        _selectedInteractionType != null && 
-        _selectedMyEmotion != null) {
-      
-      final log = InteractionLog(
-        interactionDescription: _descriptionController.text.trim(),
-        interactionType: _selectedInteractionType!,
-        myCommunicationStyle: _selectedMyCommunicationStyle,
-        perceivedPartnerCommunicationStyle: _selectedPartnerCommunicationStyle,
-        physicalContactLevel: _selectedPhysicalContactLevel,
-        myEmotionInInteraction: _selectedMyEmotion!,
-        perceivedPartnerEmotion: _selectedPartnerEmotion,
-      );
+  // En tu InteractionLogScreen...
 
-      final journalingController = Provider.of<JournalingController>(context, listen: false);
-      final success = await journalingController.submitInteractionLog(log);
-      
-      if (success && mounted) {
+  Future<void> _submitLog() async {
+    // 1. Usamos la validación segura para el formulario
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    // 2. Comprobamos los campos requeridos que no son parte del formulario (como los dropdowns)
+    if (_selectedInteractionType == null || _selectedMyEmotion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, rellene todos los campos obligatorios.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! ---
+    // Obtenemos ambos controladores
+    final journalingController = Provider.of<JournalingController>(
+      context,
+      listen: false,
+    );
+    final authController = Provider.of<AuthController>(context, listen: false);
+
+    // 3. Llamamos al método del controlador pasando cada valor del formulario como un parámetro nombrado.
+    // El controlador se encargará de añadir los IDs y la fecha.
+    final success = await journalingController.submitInteractionLog(
+      authController: authController,
+      interactionDescription: _descriptionController.text.trim(),
+      interactionType: _selectedInteractionType!,
+      myCommunicationStyle: _selectedMyCommunicationStyle,
+      perceivedPartnerCommunicationStyle: _selectedPartnerCommunicationStyle,
+      physicalContactLevel: _selectedPhysicalContactLevel,
+      myEmotionInInteraction: _selectedMyEmotion!,
+      perceivedPartnerEmotion: _selectedPartnerEmotion,
+    );
+
+    // 4. La lógica de retroalimentación al usuario se mantiene
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Registro de interacción enviado exitosamente!'),
@@ -54,14 +78,18 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
           ),
         );
         Navigator.of(context).pop();
+      } else {
+        // Mostramos el error específico que viene del controlador
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              journalingController.errorMessage ??
+                  'Ocurrió un error al enviar el registro.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, rellene todos los campos obligatorios'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -88,7 +116,8 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 maxLines: 4,
                 decoration: InputDecoration(
                   labelText: 'Descripcion de la Interacción *',
-                  hintText: 'Describe lo que sucedió durante esta interacción....',
+                  hintText:
+                      'Describe lo que sucedió durante esta interacción....',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -105,7 +134,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
+
               // Interaction Type
               _buildDropdownField(
                 label: 'Tipo de Interacción *',
@@ -123,7 +152,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // My Communication Style
               _buildDropdownField(
                 label: 'Mi estilo de comunicación',
@@ -141,7 +170,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Partner Communication Style
               _buildDropdownField(
                 label: 'Estilo de comunicación de la pareja',
@@ -159,7 +188,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Physical Contact Level
               _buildDropdownField(
                 label: 'Nivel de contacto físico',
@@ -177,7 +206,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
+
               // My Emotion
               _buildEmotionSelector(
                 label: 'Mi Emoción *',
@@ -189,7 +218,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Partner Emotion
               _buildEmotionSelector(
                 label: 'Emoción de la pareja (cómo crees que se sintió)',
@@ -201,7 +230,7 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                 },
               ),
               const SizedBox(height: 32),
-              
+
               // Submit Button
               Consumer<JournalingController>(
                 builder: (context, controller, child) {
@@ -215,16 +244,22 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: controller.isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Enviar registro de interacción',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
+                    child:
+                        controller.isLoading
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                            : const Text(
+                              'Enviar registro de interacción',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                   );
                 },
               ),
-              
+
               // Error Message
               Consumer<JournalingController>(
                 builder: (context, controller, child) {
@@ -258,20 +293,19 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
       value: value,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFF8C662)),
         ),
       ),
-      items: items.map((item) {
-        return DropdownMenuItem<String>(
-          value: item,
-          child: Text(_formatEnumValue(item)),
-        );
-      }).toList(),
+      items:
+          items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(_formatEnumValue(item)),
+            );
+          }).toList(),
       onChanged: onChanged,
     );
   }
@@ -302,32 +336,43 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: AppConstants.emotions.map((emotion) {
-              final isSelected = selectedEmotion == emotion;
-              return GestureDetector(
-                onTap: () => onEmotionSelected(emotion),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF213722) : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF213722) : Colors.grey.shade300,
+            children:
+                AppConstants.emotions.map((emotion) {
+                  final isSelected = selectedEmotion == emotion;
+                  return GestureDetector(
+                    onTap: () => onEmotionSelected(emotion),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? const Color(0xFF213722)
+                                : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color:
+                              isSelected
+                                  ? const Color(0xFF213722)
+                                  : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Text(
+                        emotion.toLowerCase().replaceAll('_', ' '),
+                        style: TextStyle(
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF20263F),
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    emotion.toLowerCase().replaceAll('_', ' '),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF20263F),
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -335,8 +380,13 @@ class _InteractionLogScreenState extends State<InteractionLogScreen> {
   }
 
   String _formatEnumValue(String value) {
-    return value.toLowerCase().replaceAll('_', ' ').split(' ').map((word) {
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return value
+        .toLowerCase()
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) {
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 }

@@ -48,7 +48,7 @@ class ApiService {
       );
     }
 
-    final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+    final url = Uri.parse('${_getBaseUrl(baseUrl: baseUrl)}$endpoint');
     final headers = requireAuth ? await _getAuthHeaders() : _getHeaders();
 
     return await http.post(url, headers: headers, body: jsonEncode(body));
@@ -57,7 +57,7 @@ class ApiService {
   static Future<http.Response> get(
     String endpoint, {
     bool requireAuth = false,
-    String? baseUrl
+    String? baseUrl,
   }) async {
     // Use mock data if enabled
     if (MockConstants.useMockData) {
@@ -74,7 +74,7 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body, {
     bool requireAuth = false,
-    String? baseUrl
+    String? baseUrl,
   }) async {
     // Use mock data if enabled
     if (MockConstants.useMockData) {
@@ -97,5 +97,16 @@ class ApiService {
     final headers = requireAuth ? await _getAuthHeaders() : _getHeaders();
 
     return await http.patch(url, headers: headers, body: jsonEncode(body));
+  }
+
+  static Future<http.Response> delete(
+    String endpoint, {
+    bool requireAuth = false,
+    String? baseUrl,
+  }) async {
+    final url = Uri.parse('${_getBaseUrl(baseUrl: baseUrl)}$endpoint');
+    final headers = requireAuth ? await _getAuthHeaders() : _getHeaders();
+
+    return await http.delete(url, headers: headers);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_habits/models/task_model.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/task_controller.dart';
 import 'task_detail_screen.dart'; 
@@ -17,9 +18,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load tasks when home screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<TaskController>(context, listen: false).getTasks();
+      final taskController= Provider.of<TaskController>(context, listen: false);
+      final authController = Provider.of<AuthController>(context, listen: false);
+
+      taskController.getIndividualTasksForUser(authController);
     });
   }
 
@@ -226,15 +229,15 @@ class DashboardTab extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                task.title,
+                                task.titulo,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF20263F),
                                 ),
                               ),
-                              if (task.description != null)
+                              if (task.descripcion != null)
                                 Text(
-                                  task.description!,
+                                  task.descripcion!,
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[600],
@@ -487,7 +490,7 @@ class TasksTab extends StatelessWidget {
                   children: [
                     _TaskList(tasks: taskController.pendingTasks),
                     _TaskList(tasks: taskController.completedTasks),
-                    _TaskList(tasks: taskController.tasks),
+                    _TaskList(tasks: taskController.allTasks),
                   ],
                 ),
               ),
@@ -500,8 +503,7 @@ class TasksTab extends StatelessWidget {
 }
 
 class _TaskList extends StatelessWidget {
-  final List<dynamic> tasks;
-
+  final List<TareaIndividual> tasks;
   const _TaskList({required this.tasks});
 
   @override
@@ -541,7 +543,7 @@ return GestureDetector(
           children: [
             Expanded(
               child: Text(
-                task.title,
+                task.titulo,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -555,11 +557,11 @@ return GestureDetector(
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: _getStatusColor(task.status),
+                color: _getStatusColor(task.estado),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                task.status.toLowerCase(),
+                task.estado.toLowerCase(),
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.white,
@@ -575,10 +577,10 @@ return GestureDetector(
             ),
           ],
         ),
-        if (task.description != null) ...[
+        if (task.descripcion != null) ...[
           const SizedBox(height: 8),
           Text(
-            task.description!,
+            task.descripcion!,
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
@@ -587,10 +589,10 @@ return GestureDetector(
             overflow: TextOverflow.ellipsis,
           ),
         ],
-        if (task.dueDate != null) ...[
+        if (task.fechaLimite != null) ...[
           const SizedBox(height: 8),
           Text(
-            'Due: ${_formatDate(task.dueDate!)}',
+            'Due: ${_formatDate(task.fechaLimite!)}',
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF595082),
@@ -607,11 +609,11 @@ return GestureDetector(
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'PENDIENTE':
+      case 'pendiente':
         return const Color(0xFFF8C662);
-      case 'COMPLETADO':
+      case 'completado':
         return const Color(0xFF41644A);
-      case 'DEMORADO':
+      case 'Declinado':
         return Colors.red;
       default:
         return Colors.grey;

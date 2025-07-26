@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/journaling_controller.dart';
-import '../models/individual_log_model.dart';
 import '../core/constants.dart';
+import '../controllers/auth_controller.dart';
 
 class IndividualLogScreen extends StatefulWidget {
   const IndividualLogScreen({super.key});
@@ -17,7 +17,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
   final _thoughtController = TextEditingController();
   final _physicalSensationController = TextEditingController();
   final _behaviorController = TextEditingController();
-  
+
   String? _selectedEmotion;
   int _stressLevel = 5;
   double _sleepHours = 8.0;
@@ -32,23 +32,52 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
   }
 
   Future<void> _submitLog() async {
-    if (_formKey.currentState!.validate() && _selectedEmotion != null) {
-      final log = IndividualEmotionalLog(
-        situation: _situationController.text.trim(),
-        thought: _thoughtController.text.trim(),
-        emotion: _selectedEmotion!,
-        physicalSensation: _physicalSensationController.text.trim().isEmpty 
-            ? null : _physicalSensationController.text.trim(),
-        behavior: _behaviorController.text.trim().isEmpty 
-            ? null : _behaviorController.text.trim(),
-        stressLevel: _stressLevel,
-        sleepQualityHours: _sleepHours,
-      );
+    // Usamos la validación segura que ya aprendimos
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return; // Si el formulario no es válido, salimos
+    }
 
-      final journalingController = Provider.of<JournalingController>(context, listen: false);
-      final success = await journalingController.submitIndividualLog(log);
-      
-      if (success && mounted) {
+    // Comprobación separada para la emoción
+    if (_selectedEmotion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, seleccione una emoción.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    final journalingController = Provider.of<JournalingController>(
+      context,
+      listen: false,
+    );
+
+    // Llamamos al método del controlador pasando cada valor como un parámetro nombrado.
+    // El controlador se encargará de añadir cliente_id, pareja_id y fecha_registro.
+    final success = await journalingController.submitIndividualLog(
+      authController: Provider.of<AuthController>(context, listen: false),
+      situation: _situationController.text.trim(),
+      thought: _thoughtController.text.trim(),
+      emotion:
+          _selectedEmotion!, // Es seguro usar '!' porque ya lo comprobamos arriba
+      // Para los campos opcionales, nos aseguramos de pasar 'null' si están vacíos
+      physicalSensation:
+          _physicalSensationController.text.trim().isEmpty
+              ? null
+              : _physicalSensationController.text.trim(),
+
+      behavior:
+          _behaviorController.text.trim().isEmpty
+              ? null
+              : _behaviorController.text.trim(),
+
+      stressLevel: _stressLevel,
+      sleepQualityHours: _sleepHours,
+    );
+
+    // La lógica de retroalimentación no cambia
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Registro individual enviado correctamente!'),
@@ -56,14 +85,18 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
           ),
         );
         Navigator.of(context).pop();
+      } else {
+        // Ahora puedes mostrar el error específico que viene del controlador
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              journalingController.errorMessage ??
+                  'Ocurrió un error inesperado.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } else if (_selectedEmotion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor seleccione una emoción'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -107,7 +140,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Thought
               TextFormField(
                 controller: _thoughtController,
@@ -131,7 +164,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Emotion Selector
               Container(
                 padding: const EdgeInsets.all(16),
@@ -154,42 +187,55 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: AppConstants.emotions.map((emotion) {
-                        final isSelected = _selectedEmotion == emotion;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedEmotion = emotion;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFF8C662) : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFFF8C662) : Colors.grey.shade300,
+                      children:
+                          AppConstants.emotions.map((emotion) {
+                            final isSelected = _selectedEmotion == emotion;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedEmotion = emotion;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isSelected
+                                          ? const Color(0xFFF8C662)
+                                          : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color:
+                                        isSelected
+                                            ? const Color(0xFFF8C662)
+                                            : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Text(
+                                  emotion.toLowerCase().replaceAll('_', ' '),
+                                  style: TextStyle(
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF20263F),
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              emotion.toLowerCase().replaceAll('_', ' '),
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFF20263F),
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Physical Sensation (Optional)
               TextFormField(
                 controller: _physicalSensationController,
@@ -207,7 +253,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Behavior (Optional)
               TextFormField(
                 controller: _behaviorController,
@@ -225,7 +271,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Stress Level Slider
               Container(
                 padding: const EdgeInsets.all(16),
@@ -260,7 +306,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Sleep Hours Slider
               Container(
                 padding: const EdgeInsets.all(16),
@@ -295,7 +341,7 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Submit Button
               Consumer<JournalingController>(
                 builder: (context, controller, child) {
@@ -309,16 +355,22 @@ class _IndividualLogScreenState extends State<IndividualLogScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: controller.isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Enviar registro',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
+                    child:
+                        controller.isLoading
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                            : const Text(
+                              'Enviar registro',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                   );
                 },
               ),
-              
+
               // Error Message
               Consumer<JournalingController>(
                 builder: (context, controller, child) {

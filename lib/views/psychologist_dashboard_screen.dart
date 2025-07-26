@@ -65,11 +65,14 @@ class _PsychologistDashboardScreenState
                     Navigator.of(
                       context,
                     ).pushReplacementNamed('/psychologist-login');
+                  } else if (value == 'profile') {
+                    Navigator.of(context).pushNamed('/profile-psicologist');
                   }
                 },
                 itemBuilder:
                     (context) => [
                       PopupMenuItem(
+                        value: 'profile',
                         child: Row(
                           children: [
                             const Icon(Icons.person, color: Color(0xFF595082)),
@@ -104,6 +107,7 @@ class _PsychologistDashboardScreenState
           _CouplesManagement(),
           _AnalysisView(),
           _SessionsManagement(),
+          _TasksManagement(), // La nueva pantalla para Tareas
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -123,6 +127,10 @@ class _PsychologistDashboardScreenState
             label: 'Análisis',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sesiones'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment), // Icono para tareas
+            label: 'Tareas',
+          ),
         ],
       ),
     );
@@ -294,9 +302,9 @@ class _DashboardOverview extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               if (couples.isEmpty)
-                const Center( 
+                const Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 20.0),
                     child: Text(
@@ -307,10 +315,11 @@ class _DashboardOverview extends StatelessWidget {
                 )
               else
                 Column(
-                  children: couples
-                      .take(3) 
-                      .map((couple) => _CoupleCard(couple: couple))
-                      .toList(),
+                  children:
+                      couples
+                          .take(3)
+                          .map((couple) => _CoupleCard(couple: couple))
+                          .toList(),
                 ),
             ],
           ),
@@ -1181,6 +1190,78 @@ class _MetricItem extends StatelessWidget {
           title,
           style: const TextStyle(fontSize: 12, color: Colors.grey),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+class _TasksManagement extends StatelessWidget {
+  const _TasksManagement();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.assignment, color: Color(0xFF595082), size: 28),
+                  SizedBox(width: 12),
+                  Text(
+                    'Gestión de Tareas',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF20263F),
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamed('/create-task');
+                },
+                icon: const Icon(Icons.add),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF595082),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Contenido de tareas (placeholder por ahora)
+        const Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.assignment_turned_in_outlined,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Asignar y dar seguimiento a las tareas',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Próximamente disponible',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );

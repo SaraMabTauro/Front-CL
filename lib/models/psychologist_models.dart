@@ -91,7 +91,9 @@ class Psychologist {
       contrasena: json['contrasena'],
       fotoPerfilUrl: json['fotoPerfilUrl'],
       telefono: json['telefono'] ?? '',
-      fechaCreacion: json['fechaCreacion'],
+      fechaCreacion: json['fechaCreacion'] != null 
+                    ? DateTime.parse(json['fechaCreacion']) 
+                    : null,
     );
   }
 

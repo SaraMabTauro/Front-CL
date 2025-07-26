@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/psychologist_controller.dart';
 import '../controllers/auth_controller.dart';
+import 'dart:math';
 
 class CreateCoupleScreen extends StatefulWidget {
   const CreateCoupleScreen({super.key});
@@ -39,67 +40,144 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
   }
 
   Future<void> _createCouple() async {
-    if (_formKey.currentState!.validate()) {
-      final psychController = Provider.of<PsychologistController>(
-        context,
-        listen: false,
-      );
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
+    // 1. Valida el formulario antes de hacer nada
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Obtén los controladores. No necesitas el authController aquí dentro.
+    final psychController = Provider.of<PsychologistController>(
+      context,
+      listen: false,
+    );
+    final authController = Provider.of<AuthController>(context, listen: false);
+    final navigator = Navigator.of(
+      context,
+    ); // Captura el Navigator antes del await
+    final messenger = ScaffoldMessenger.of(context); // Y el ScaffoldMessenger
+
+    // 2. Comienza el bloque try/catch para manejar todo el flujo
+    try {
+      // 3. Activa el estado de carga UNA VEZ al principio
+      psychController.clearMessages(); // Limpia errores antiguos
+      psychController.sendLoading(true); // Método para setear loading
 
       final psicologoId = psychController.currentPsychologist?.id;
       if (psicologoId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Debe seleccionar un psicólogo'),
-            backgroundColor: Colors.red,
-          ),
+        // Lanza un error controlado que será capturado por el catch
+        throw Exception(
+          'No se pudo identificar al psicólogo. Por favor, inicie sesión de nuevo.',
         );
-        return;
       }
 
-      // Registrar Cliente 1
+      // --- Genera contraseñas temporales seguras ---
+      String generatePassword() {
+        const length = 10;
+        const chars =
+            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^&*()';
+        return String.fromCharCodes(
+          Iterable.generate(
+            length,
+            (_) => chars.codeUnitAt(Random().nextInt(chars.length)),
+          ),
+        );
+      }
+
+      final passwordCliente1 = generatePassword();
+      final passwordCliente2 = generatePassword();
+
+      // --- Registrar Cliente 1 ---
+      print("Registrando Cliente 1...");
       final user1 = await authController.registerClient(
         correo: _correoCliente1Controller.text.trim(),
-        username: _nombreCliente1Controller.text.trim(),
-        contrasena: '123456', // O pide la contraseña
+        username:
+            _correoCliente1Controller.text
+                .trim()
+                .split('@')
+                .first, // Genera un username
+        contrasena: passwordCliente1, // Usa la contraseña generada
         nombre: _nombreCliente1Controller.text.trim(),
         apellido: _apellidoCliente1Controller.text.trim(),
-        rol: 'paciente',
+        rol: 'cliente', // Envía el string que espera tu backend
         idPsicologo: psicologoId,
       );
-      if (user1 == null) return;
+      if (user1 == null) {
+        throw Exception(
+          'Error al registrar al Cliente 1. ${authController.errorMessage}',
+        );
+      }
 
-      // Registrar Cliente 2
+      // --- Registrar Cliente 2 ---
+      print("Registrando Cliente 2...");
       final user2 = await authController.registerClient(
         correo: _correoCliente2Controller.text.trim(),
-        username: _nombreCliente2Controller.text.trim(),
-        contrasena: '123456', // O pide la contraseña
+        username: _correoCliente2Controller.text.trim().split('@').first,
+        contrasena: passwordCliente2, // Usa la contraseña generada
         nombre: _nombreCliente2Controller.text.trim(),
         apellido: _apellidoCliente2Controller.text.trim(),
-        rol: 'paciente',
+        rol: 'cliente',
         idPsicologo: psicologoId,
       );
-      if (user2 == null) return;
+      if (user2 == null) {
+        // Opcional: Podrías añadir lógica para eliminar a user1 si este paso falla.
+        throw Exception(
+          'Error al registrar al Cliente 2. ${authController.errorMessage}',
+        );
+      }
 
-      // Crear pareja
+      // --- Crear la Pareja ---
+      print("Creando la pareja con IDs: ${user1.id}, ${user2.id}");
       final success = await psychController.createCouple(
-        id: 0, // O el id que corresponda
         idParejaA: user1.id,
         idParejaB: user2.id,
         objetivosTerapia: _objetivosController.text.trim(),
       );
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pareja creada exitosamente'),
-            backgroundColor: Colors.green,
-          ),
+      if (!success) {
+        throw Exception(
+          'Error al crear la pareja. ${psychController.errorMessage}',
         );
-        Navigator.of(context).pop();
       }
+
+      // 4. Detén la carga en caso de éxito
+      psychController.sendLoading(false);
+
+      // --- Éxito Total ---
+      // Muestra un diálogo con las contraseñas generadas
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('¡Pareja Creada con Éxito!'),
+                content: SelectableText(
+                  'La pareja ha sido registrada.\n\n'
+                  'Credenciales Cliente 1:\n'
+                  'Usuario: ${_correoCliente1Controller.text.trim()}\n'
+                  'Contraseña: $passwordCliente1\n\n'
+                  'Credenciales Cliente 2:\n'
+                  'Usuario: ${_correoCliente2Controller.text.trim()}\n'
+                  'Contraseña: $passwordCliente2\n\n'
+                  'Por favor, guarde estas contraseñas para compartirlas con sus pacientes.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Cierra el diálogo
+                      navigator.pop(); // Vuelve a la pantalla anterior
+                    },
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (e) {
+      // 5. Captura CUALQUIER error del flujo
+      print("ERROR en _createCouple: $e");
+      psychController.sendLoading(false); // DETIENE la carga
+      psychController.setitError(
+        e.toString().replaceAll("Exception: ", ""),
+      ); // Muestra el error
     }
   }
 

@@ -6,6 +6,8 @@ import '../models/psychologist_models.dart';
 import '../services/api_service.dart';
 import '../models/session_model.dart' as session_model;
 import '../models/ia_analysis_model.dart';
+import '../models/user_model.dart';
+
 
 class PsychologistController extends ChangeNotifier {
   static const _storage = FlutterSecureStorage();
@@ -17,6 +19,7 @@ class PsychologistController extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+  List<Client> _individualClients = []; // <-- AÑADIDO: Lista para clientes individuales
 
   // Getters
   Psychologist? get currentPsychologist => _currentPsychologist;
@@ -26,9 +29,22 @@ class PsychologistController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
+  List<Client> get individualClients => _individualClients; // <-- AÑADIDO: Getter para clientes
+  bool get isAuthenticated => _currentPsychologist != null;
+  
 
   void _setLoading(bool loading) {
     _isLoading = loading;
+    notifyListeners();
+  }
+
+  void sendLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void setitError(String? message) {
+    _errorMessage = message;
     notifyListeners();
   }
 
@@ -72,7 +88,16 @@ class PsychologistController extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError('Error de conexión. Intente nuevamente.');
+      // _setError('Error de conexión. Intente nuevamente.');
+      // _setLoading(false);
+      // return false;
+      print('¡ERROR ATRAPADO EN EL LOGIN!');
+      print('Tipo de error: ${e.runtimeType}');
+      print('Error: $e');
+
+      _setError(
+        'Error procesando los datos del usuario.',
+      ); // Un mensaje más preciso
       _setLoading(false);
       return false;
     }
@@ -122,6 +147,38 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
+  // <-- MÉTODO AÑADIDO ---
+  // Obtener clientes individuales del psicólogo
+  Future<void> getIndividualClients() async {
+    // Este es un método hipotético. Necesitarás un endpoint en tu backend
+    // que devuelva todos los clientes asociados a un psicólogo.
+    // Ej: GET /psicologos/:id/clientes
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (_currentPsychologist == null) throw Exception("Psicólogo no autenticado.");
+
+      // NOTA: Debes asegurarte de que este endpoint exista en tu API
+      final response = await ApiService.get(
+        '/psicologos/${_currentPsychologist!.id}/clientes',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion, // O la baseUrl correcta
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> clientsJson = jsonDecode(response.body);
+        // Asumimos que tienes un modelo Client.fromJson
+        _individualClients = clientsJson.map((json) => Client.fromJson(json)).toList();
+      } else {
+        _setError('Error al cargar los clientes individuales');
+      }
+    } catch (e) {
+      _setError('Error de conexión al obtener clientes: $e');
+    } finally {
+      _setLoading(false); // Asegúrate de llamar a setLoading(false) al final
+    }
+  }
+
   // Obtener parejas del psicólogo
   Future<void> getCouples() async {
     _setLoading(true);
@@ -144,21 +201,18 @@ class PsychologistController extends ChangeNotifier {
   }
 
   Future<bool> updatePsychologist(int id, Map<String, dynamic> data) async {
+    _setLoading(true);
+    _setError(null);
     try {
       final response = await ApiService.patch('/psicologo/$id', data);
       if (response.statusCode == 200) {
-        // Usa el método 'copyWith' que añadiremos al modelo
-        _currentPsychologist = _currentPsychologist!.copyWith(
-          nombre: data['nombre'],
-          apellido: data['apellido'],
-          correo: data['correo'],
-          telefono: data['telefono'],
-          especialidad: data['especialidad'],
-          cedulaProfesional: data['cedulaProfesional'],
-        );
-        _setSuccess('Perfil actualizado');
+        // La API puede devolver el objeto actualizado. Si es así, lo usamos.
+        final updatedPsychologistData = jsonDecode(response.body);
+        _currentPsychologist = Psychologist.fromJson(updatedPsychologistData);
+        
+        _setSuccess('Perfil actualizado exitosamente');
+        notifyListeners(); // Notifica a la UI que los datos cambiaron
         _setLoading(false);
-        //notifyListeners(); // Notifica a la UI que los datos cambiaron
         return true;
       } else {
         final errorData = jsonDecode(response.body);
@@ -175,7 +229,7 @@ class PsychologistController extends ChangeNotifier {
 
   // Crear nueva pareja
   Future<bool> createCouple({
-    required int id,
+    // required int id,
     required int idParejaA,
     required int idParejaB,
     required String objetivosTerapia,
@@ -184,12 +238,12 @@ class PsychologistController extends ChangeNotifier {
     _setError(null);
 
     try {
-      final response = await ApiService.post('/parejas', {
-        'id': id,
+      final response = await ApiService.post('/parejas',  {
+        // 'id': id,
         'idParejaA': idParejaA,
         'idParejaB': idParejaB,
         'objetivosTerapia': objetivosTerapia,
-      });
+      }, baseUrl: AppConstants.baseUrlTerapia);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         _setLoading(false);
@@ -367,7 +421,7 @@ class PsychologistController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void logout() {
+  Future <void> logout() async {
     _currentPsychologist = null;
     _couples.clear();
     _sessions.clear();

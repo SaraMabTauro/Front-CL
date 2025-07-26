@@ -24,7 +24,7 @@ class _PsychologistLoginScreenState extends State<PsychologistLoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() ?? false) {
       final psychController = Provider.of<PsychologistController>(context, listen: false);
       
       final success = await psychController.loginPsychologist(
@@ -45,12 +45,16 @@ class _PsychologistLoginScreenState extends State<PsychologistLoginScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Form(
+          child: SingleChildScrollView(
+            child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+
+                const SizedBox(height: 60), 
+
                 // Logo y título profesional
                 Container(
                   width: 100,
@@ -221,6 +225,7 @@ class _PsychologistLoginScreenState extends State<PsychologistLoginScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

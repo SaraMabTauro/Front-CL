@@ -19,9 +19,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuthStatus() async {
     final authController = Provider.of<AuthController>(context, listen: false);
     await authController.checkAuthStatus();
-    
+
     await Future.delayed(const Duration(seconds: 2));
-    
+
     if (mounted) {
       if (authController.isAuthenticated) {
         Navigator.of(context).pushReplacementNamed('/home');
@@ -29,6 +29,26 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.of(context).pushReplacementNamed('/login');
       }
     }
+    //if (!mounted) return;
+
+    // La lógica de redirección se basa en el estado del AuthController
+    // if (authController.isAuthenticated) {
+    //   switch (authController.userRole) {
+    //     case UserRole.client:
+    //       Navigator.of(context).pushReplacementNamed('/home');
+    //       break;
+    //     case UserRole.psychologist:
+    //       Navigator.of(context).pushReplacementNamed('/psychologist-dashboard');
+    //       break;
+    //     case UserRole.none:
+    //       // Caso improbable, pero seguro
+    //       Navigator.of(context).pushReplacementNamed('/login');
+    //       break;
+    //   }
+    // } else {
+    //   // Si no está autenticado, va a la pantalla de login principal
+    //   Navigator.of(context).pushReplacementNamed('/login');
+    // }
   }
 
   @override
@@ -71,10 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 8),
             const Text(
               'Optimizando las relaciones juntos',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.white70),
             ),
             const SizedBox(height: 48),
             const CircularProgressIndicator(

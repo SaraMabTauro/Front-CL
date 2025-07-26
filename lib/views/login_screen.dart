@@ -23,13 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() ?? false) {
       final authController = Provider.of<AuthController>(
         context,
-        listen: false,
+        listen: false, 
       );
 
-      final success = await authController.login(
+      bool success = await authController.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
@@ -47,12 +47,15 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Form(
+          child: SingleChildScrollView(
+            child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+
+                const SizedBox(height: 60), 
                 // Logo and Title
                 Container(
                   width: 80,
@@ -225,6 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 16),
               ],
+            ),
             ),
           ),
         ),

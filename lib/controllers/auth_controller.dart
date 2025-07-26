@@ -11,11 +11,12 @@ class AuthController extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isAuthenticated = false;
 
   User? get currentUser => _currentUser;
+  bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _currentUser != null;
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -38,7 +39,7 @@ class AuthController extends ChangeNotifier {
       });
       print("Response: ${response.body}");
       print(response.statusCode);
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         print("jalo");
         final data = jsonDecode(response.body);
         final token = data['token'];
@@ -52,6 +53,13 @@ class AuthController extends ChangeNotifier {
         );
 
         _currentUser = User.fromJson(userData);
+        _isAuthenticated = true;
+
+        await _persistCurrentUser(); 
+
+        await _fetchAndSetCoupleIdForCurrentUser();
+
+        notifyListeners();
         _setLoading(false);
         return true;
       } else {
@@ -63,6 +71,48 @@ class AuthController extends ChangeNotifier {
       _setError('Network error. Please try again.');
       _setLoading(false);
       return false;
+    }
+  }
+
+  /// Guarda el usuario actual (completo, con coupleId) en el almacenamiento seguro.
+  Future<void> _persistCurrentUser() async {
+    if (_currentUser != null) {
+      // Necesitamos un método toJson() en nuestro modelo User para esto.
+      await _storage.write(
+        key: AppConstants.userKey,
+        value: jsonEncode(_currentUser!.toJson()),
+      );
+    }
+  }
+
+  Future<void> _fetchAndSetCoupleIdForCurrentUser() async {
+    // Si no hay usuario, no hacemos nada.
+    if (_currentUser == null) return;
+
+    try {
+      final response = await ApiService.get(
+        '/parejas/usuario/${_currentUser!.id}', // Usamos el nuevo endpoint
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia, // ¡Asegúrate de que esta es la baseUrl correcta!
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> coupleData = jsonDecode(response.body);
+        // La API devuelve un array, comprobamos si no está vacío.
+        if (coupleData.isNotEmpty) {
+          // Tomamos el ID de la primera pareja en la lista.
+          final int coupleId = coupleData[0]['id'];
+          // Usamos el método copyWith para actualizar nuestro usuario actual con el ID de la pareja.
+          _currentUser = _currentUser!.copyWith(parejaId: coupleId);
+
+          await _persistCurrentUser(); // Guardamos el usuario actualizado en el almacenamiento seguro.
+          notifyListeners(); // Notificamos si queremos que la UI reaccione a esto.
+        }
+      }
+    } catch (e) {
+      // Es un error no crítico, la app puede seguir funcionando sin el ID de la pareja.
+      // Simplemente lo imprimimos para depuración.
+      print("No se pudo obtener el ID de la pareja: $e");
     }
   }
 
@@ -189,6 +239,7 @@ class AuthController extends ChangeNotifier {
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.userKey);
     _currentUser = null;
+    _isAuthenticated = false;
     notifyListeners();
   }
 
@@ -200,6 +251,9 @@ class AuthController extends ChangeNotifier {
       try {
         final userData = jsonDecode(userJson);
         _currentUser = User.fromJson(userData);
+        _isAuthenticated = true;
+
+        await _fetchAndSetCoupleIdForCurrentUser();
         notifyListeners();
       } catch (e) {
         await logout();
