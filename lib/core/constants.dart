@@ -4,7 +4,13 @@ class AppConstants {
   static const String baseUrlTerapia ='https://cl-terapia.onrender.com';
   static const String baseUrlGestion = 'https://cl-gestion.onrender.com';
   static const String baseUrlModelo = 'https://cl-modelo.onrender.com';
+  static const String baseUrlIA = 'https://cl-bert.onrender.com';
   
+  // static const String baseUrl = 'http://localhost:3003';
+  // static const String baseUrlTerapia ='http://localhost:3002';
+  // static const String baseUrlGestion = 'http://localhost:3001';
+  // static const String baseUrlModelo = 'http://localhost:3000';
+
   // Storage Keys
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_data';
@@ -28,9 +34,9 @@ class AppConstants {
   static const String intimateContactLevel = 'CONTACTO_ÍNTIMO';
 
   // Task Status
-  static const String pendingStatus = 'PENDIENTE';
-  static const String completedStatus = 'COMPLETADO';
-  static const String delayedStatus = 'DEMORADO';
+  static const String pendingStatus = 'pendiente';
+  static const String completedStatus = 'completada';
+  static const String delayedStatus = 'Declinada';
   
     // Tipos de Tareas
   static const String communicationTask = 'EJERCICIO_DE_COMUNICACIÓN';

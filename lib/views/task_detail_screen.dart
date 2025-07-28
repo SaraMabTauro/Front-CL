@@ -29,8 +29,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _completeTask() async {
-    if (_formKey.currentState!.validate() ?? false) {
-      return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return; 
     }
     final taskController = Provider.of<TaskController>(context, listen: false);
     final authController = Provider.of<AuthController>(context, listen: false);
@@ -83,16 +83,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   IconData _getTaskTypeIcon(TaskType taskType) {
     switch (taskType) {
-      case AppConstants.communicationTask:
-        return Icons.chat_bubble_outline;
-      case AppConstants.mindfulnessTask:
+      case TaskType.individual:
         return Icons.self_improvement;
-      case AppConstants.intimacyTask:
+      case TaskType.couple:
         return Icons.favorite_outline;
-      case AppConstants.conflictResolutionTask:
-        return Icons.handshake_outlined;
-      default:
-        return Icons.task_alt;
+
     }
   }
 
@@ -392,7 +387,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         color: Colors.white,
                                       )
                                       : const Text(
-                                        'Complete Task',
+                                        'Completar Tarea',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,

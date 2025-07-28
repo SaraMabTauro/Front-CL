@@ -58,7 +58,6 @@ class CloudLoveApp extends StatelessWidget {
           '/create-session': (context) => const CreateSessionScreen(),
           '/profile-psicologist': (context) => const PsychologistProfileView(),
           '/create-task': (context) => const CreateTaskScreen(),
-
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/couple-detail') {

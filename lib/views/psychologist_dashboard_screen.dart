@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../controllers/psychologist_controller.dart';
 import '../models/psychologist_models.dart';
 import '../models/ia_analysis_model.dart';
+import '../models/session_model.dart';
+import 'package:collection/collection.dart';
+import '../controllers/auth_controller.dart';
 
 class PsychologistDashboardScreen extends StatefulWidget {
   const PsychologistDashboardScreen({super.key});
@@ -24,8 +27,11 @@ class _PsychologistDashboardScreenState
         context,
         listen: false,
       );
-      psychController.getCouples();
-      psychController.getCouplesAnalysis();
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      psychController.fetchDashboardData(authController);
     });
   }
 
@@ -144,6 +150,9 @@ class _DashboardOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<PsychologistController>(
       builder: (context, psychController, child) {
+        if (psychController.isLoading && psychController.couples.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final couples = psychController.couples;
         final activeCouples =
             couples.where((c) => c.estado == CoupleStatus.activa).length;
@@ -151,6 +160,7 @@ class _DashboardOverview extends StatelessWidget {
             couples
                 .where((c) => c.estado == CoupleStatus.pendienteAprobacion)
                 .length;
+        final sessionsTodayCount = psychController.sessionsToday.length;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -241,7 +251,7 @@ class _DashboardOverview extends StatelessWidget {
                   Expanded(
                     child: _StatCard(
                       title: 'Sesiones Hoy',
-                      value: '3',
+                      value: sessionsTodayCount.toString(),
                       icon: Icons.event_available,
                       color: Colors.blue,
                     ),
@@ -465,7 +475,7 @@ class _CoupleCard extends StatelessWidget {
             child: const Icon(Icons.favorite, color: Colors.white),
           ),
           title: Text(
-            '${couple.nombreCliente1 ?? 'Cliente 1'} & ${couple.nombreCliente2 ?? 'Cliente 2'}',
+            '${couple.nombreCliente1 ?? 'Cargando...'} & ${couple.nombreCliente2 ?? 'Cargando...'}',
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
@@ -739,35 +749,45 @@ class _DetailedCoupleCard extends StatelessWidget {
               alignment: Alignment.bottomRight,
               child: ElevatedButton.icon(
                 onPressed: () async {
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const AlertDialog(
+                      content: Column(mainAxisSize: MainAxisSize.min, children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Actualizando análisis...'),
+                      ]),
+                    ),
+                  );
+
                   final psychController = Provider.of<PsychologistController>(
                     context,
                     listen: false,
                   );
-                  final request = AIAnalysisRequest(
-                    coupleId: couple.id,
-                    analysisType: 'comprehensive',
-                    parameters: {
-                      'includeRecommendations': true,
-                      'confidenceThreshold': 0.7,
-                      'analysisDepth': 'detailed',
-                    },
-                  );
-                  final result = await psychController.generateAIAnalysis(
-                    request,
-                  );
+                  await psychController.getCouplesAnalysis();
+
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          result != null
-                              ? 'Análisis generado exitosamente'
-                              : psychController.errorMessage ??
-                                  'Error al generar análisis',
+                    Navigator.of(context).pop(); // Cerramos el diálogo de carga
+
+                    // Mostramos un SnackBar con el resultado.
+                    // Verificamos si hubo un error durante la carga.
+                    if (psychController.errorMessage == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Lista de análisis actualizada.'),
+                          backgroundColor: Colors.green,
                         ),
-                        backgroundColor:
-                            result != null ? Colors.green : Colors.red,
-                      ),
-                    );
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(psychController.errorMessage!),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 },
                 icon: const Icon(Icons.auto_graph, size: 16),
@@ -857,12 +877,18 @@ class _DetailedCoupleCard extends StatelessWidget {
                               context,
                               listen: false,
                             );
+                        final authController = Provider.of<AuthController>(
+                          context,
+                          listen: false,
+                        );
+
                         final success = await psychController.updateCouple(
                           parejaId: couple.id,
                           estatus:
                               selectedStatus
                                   .name, // <-- Convierte enum a String
                           objetivosTerapia: objetivosController.text,
+                          authController: authController,
                         );
 
                         if (success && context.mounted) {
@@ -871,6 +897,16 @@ class _DetailedCoupleCard extends StatelessWidget {
                             const SnackBar(
                               content: Text('Pareja actualizada exitosamente'),
                               backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                psychController.errorMessage ??
+                                    'No se pudo actualizar',
+                              ),
+                              backgroundColor: Colors.red,
                             ),
                           );
                         }
@@ -1267,71 +1303,233 @@ class _TasksManagement extends StatelessWidget {
     );
   }
 }
+// ... (dentro de psychologist_dashboard_screen.dart)
 
 class _SessionsManagement extends StatelessWidget {
   const _SessionsManagement();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
+    // Usamos 'watch' para que la UI se reconstruya cuando los datos de sesiones cambien.
+    return Consumer<PsychologistController>(
+      builder: (context, psychController, child) {
+        return Column(
+          children: [
+            // Header (tu código aquí ya es perfecto)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.event, color: Color(0xFF595082), size: 28),
-                  SizedBox(width: 12),
-                  Text(
-                    'Gestión de Sesiones',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF20263F),
+                  const Row(
+                    children: [
+                      Icon(Icons.event, color: Color(0xFF595082), size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        'Gestión de Sesiones',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF20263F),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/create-session');
+                    },
+                    icon: const Icon(Icons.add),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF595082),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
               ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/create-session');
-                },
-                icon: const Icon(Icons.add),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF595082),
-                  foregroundColor: Colors.white,
+            ),
+
+            // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+            // Contenido de sesiones con lógica condicional correcta.
+            Expanded(child: _buildSessionList(psychController)),
+          ],
+        );
+      },
+    );
+  }
+
+  // Creamos un método auxiliar para mantener el 'build' limpio.
+  Widget _buildSessionList(PsychologistController psychController) {
+    // Caso 1: Cargando datos
+    if (psychController.isLoading && psychController.sessions.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Caso 2: Error (opcional pero recomendado)
+    if (psychController.errorMessage != null &&
+        psychController.sessions.isEmpty) {
+      return Center(
+        child: Text(
+          psychController.errorMessage!,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    // Caso 3: No hay sesiones programadas
+    if (psychController.sessions.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No hay sesiones programadas',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Presiona el botón "+" para crear una nueva.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Caso 4: Mostrar la lista de sesiones
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: psychController.sessions.length,
+      itemBuilder: (context, index) {
+        final session = psychController.sessions[index];
+        // Usamos nuestro nuevo widget _SessionCard
+        return _SessionCard(session: session);
+      },
+    );
+  }
+}
+
+// --- ¡NUEVO WIDGET AUXILIAR! ---
+// Creamos una tarjeta para mostrar cada sesión de forma bonita.
+class _SessionCard extends StatelessWidget {
+  final TherapySession session;
+
+  const _SessionCard({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _getStatusColor(session.estado);
+
+    // Para encontrar el nombre de la pareja, necesitamos acceder al controlador
+    final psychController = Provider.of<PsychologistController>(
+      context,
+      listen: false,
+    );
+    final couple = psychController.couples.firstWhereOrNull(
+      (c) => c.id == session.idPareja,
+    );
+    final coupleName =
+        couple != null
+            ? '${couple.nombreCliente1 ?? "Cliente"} & ${couple.nombreCliente2 ?? "Cliente"}'
+            : 'Pareja ID: ${session.idPareja}';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      child: InkWell(
+        onTap: () {
+          // TODO: Navegar a la pantalla de detalle de la sesión
+          // Navigator.of(context).pushNamed('/session-detail', arguments: session.id);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      session.titulo,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF20263F),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      session.estado.name, // Usamos el nombre del enum
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                coupleName,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${session.fechaHora.day}/${session.fechaHora.month}/${session.fechaHora.year}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    TimeOfDay.fromDateTime(session.fechaHora).format(context),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-
-        // Contenido de sesiones
-        const Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.event_available, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'Gestión de Sesiones',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Próximamente disponible',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
+  }
+
+  Color _getStatusColor(SessionStatus status) {
+    switch (status) {
+      case SessionStatus.programada:
+        return Colors.blue;
+      case SessionStatus.enProgreso:
+        return Colors.orange;
+      case SessionStatus.completada:
+        return Colors.green;
+      case SessionStatus.cancelada:
+        return Colors.red;
+    }
   }
 }

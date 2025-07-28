@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_habits/models/task_model.dart';
 import '../controllers/psychologist_controller.dart';
-import '../controllers/task_controller.dart';
 import '../core/constants.dart';
+import '../controllers/auth_controller.dart';
+import '../models/user_model.dart';
+import '../models/psychologist_models.dart';
 
 // Enum para controlar qué formulario se muestra
 enum TaskAssignmentType { individual, couple }
@@ -18,14 +20,11 @@ class CreateTaskScreen extends StatefulWidget {
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Tipo de asignación seleccionado
   TaskAssignmentType _assignmentType = TaskAssignmentType.individual;
 
-  // Controladores para los campos del formulario
   final _tituloController = TextEditingController();
   final _descripcionController = TextEditingController();
-  
-  // Variables para los dropdowns y el selector de fecha
+
   int? _selectedClientId;
   int? _selectedCoupleId;
   String? _selectedTaskType;
@@ -34,10 +33,36 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void initState() {
     super.initState();
-    // Al iniciar la pantalla, nos aseguramos de tener la lista de parejas y clientes.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PsychologistController>(context, listen: false).getCouples();
-      Provider.of<PsychologistController>(context, listen: false).getIndividualClients();
+      final psychController = Provider.of<PsychologistController>(
+        context,
+        listen: false,
+      );
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      final currentPsychologist = psychController.currentPsychologist;
+
+      if (currentPsychologist != null) {
+        final authController = Provider.of<AuthController>(
+          context,
+          listen: false,
+        );
+        psychController.getCouplesForPsychologist(
+          currentPsychologist.id,
+          authController,
+        );
+
+        // --- CORRECCIÓN ---
+        // Obtenemos los pacientes del psicólogo logueado pasándole su ID
+        psychController.getPatientsForPsychologist(currentPsychologist.id);
+      } else {
+        // Opcional: Manejar el caso en que se llegue a esta pantalla sin estar logueado
+        print(
+          "ADVERTENCIA: Se intentó acceder a CreateTaskScreen sin un psicólogo logueado.",
+        );
+      }
     });
   }
 
@@ -64,11 +89,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   Future<void> _createTask() async {
     // Usamos la validación segura
-    if (!(_formKey.currentState?.validate() ?? false) || _selectedDate == null) {
+    if (!(_formKey.currentState?.validate() ?? false) ||
+        _selectedDate == null) {
       // Si la fecha es nula, mostramos un mensaje
-      if (_selectedDate == null) {
+      if (_selectedDate == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor, seleccione una fecha límite.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Por favor, seleccione una fecha límite.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
@@ -76,44 +105,41 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final psychController = Provider.of<PsychologistController>(context, listen: false);
+    final psychController = Provider.of<PsychologistController>(
+      context,
+      listen: false,
+    );
 
     bool success = false;
-    String? errorMessage;
 
     try {
       if (_assignmentType == TaskAssignmentType.individual) {
-        final tareaIndividualController = Provider.of<TaskController>(context, listen: false);
         final tarea = TareaIndividual(
-          psicologoId: Provider.of<PsychologistController>(context, listen: false).currentPsychologist!.id,
+          psicologoId: psychController.currentPsychologist!.id,
           clienteId: _selectedClientId!,
           titulo: _tituloController.text.trim(),
           descripcion: _descripcionController.text.trim(),
           fechaLimite: _selectedDate!,
           estado: 'pendiente',
-          creadoEn: DateTime.now(),
         );
         // Llama al método para crear la tarea individual
-        success = await tareaIndividualController.createTareaIndividual(tarea);
+        success = await psychController.createIndividualTask(tarea);
         print("Creando tarea individual: ${tarea.toJson()}");
-        errorMessage = tareaIndividualController.errorMessage;
-        success = true; // Placeholder
       } else {
-        final tareaParejaController = Provider.of<TaskController> (context, listen: false);
         final tarea = TareaPareja(
-          psicologoId: Provider.of<PsychologistController>(context, listen: false).currentPsychologist!.id,
+          psicologoId: psychController.currentPsychologist!.id,
           parejaId: _selectedCoupleId!,
           titulo: _tituloController.text.trim(),
           descripcion: _descripcionController.text.trim(),
           fechaLimite: _selectedDate!,
-          estado: AppConstants.pendingStatus,
+          estado: 'pendiente',
         );
         // Llama al método para crear la tarea de pareja
-        success = await tareaParejaController.createTareaPareja(tarea);
-        errorMessage = tareaParejaController.errorMessage;
+        success = await psychController.createCoupleTask(tarea);
         print("Creando tarea de pareja: ${tarea.toJson()}"); // Placeholder
-        success = true; // Placeholder
       }
+
+      if (!mounted) return;
 
       if (success) {
         messenger.showSnackBar(
@@ -124,21 +150,20 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         );
         navigator.pop();
       } else {
-        // El controlador debería haber seteado un mensaje de error.
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error al crear la tarea.'), // O usa el mensaje del controller
+            content: Text(psychController.errorMessage ?? 'Error al crear la tarea.'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Ocurrió un error inesperado: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Ocurrió un error inesperado: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       // taskController.setLoading(false);
     }
@@ -146,7 +171,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos el PsychController para obtener las listas de clientes y parejas
     final psychController = context.watch<PsychologistController>();
 
     return Scaffold(
@@ -191,7 +215,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   });
                 },
                 style: SegmentedButton.styleFrom(
-                  selectedBackgroundColor: const Color(0xFF595082).withOpacity(0.2),
+                  selectedBackgroundColor: const Color(
+                    0xFF595082,
+                  ).withOpacity(0.2),
                   selectedForegroundColor: const Color(0xFF595082),
                 ),
               ),
@@ -203,15 +229,22 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 DropdownButtonFormField<int>(
                   value: _selectedClientId,
                   hint: const Text('Seleccione un cliente'),
-                  decoration: const InputDecoration(labelText: 'Cliente *', border: OutlineInputBorder()),
-                  items: psychController.individualClients.map((client) {
-                    return DropdownMenuItem<int>(
-                      value: client.id,
-                      child: Text('${client.nombre} ${client.apellido}'),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => _selectedClientId = value),
-                  validator: (value) => value == null ? 'Debe seleccionar un cliente' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Cliente *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items:
+                      psychController.individualClients.map((client) {
+                        return DropdownMenuItem<int>(
+                          value: client.id,
+                          child: Text('${client.nombre} ${client.apellido}'),
+                        );
+                      }).toList(),
+                  onChanged:
+                      (value) => setState(() => _selectedClientId = value),
+                  validator:
+                      (value) =>
+                          value == null ? 'Debe seleccionar un cliente' : null,
                 )
               else
                 DropdownButtonFormField<int>(
@@ -222,23 +255,26 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.people_outline),
                   ),
-                  items: psychController.couples.map((couple) {
-                    return DropdownMenuItem<int>(
-                      value: couple.id,
-                      // Asumiendo que el modelo 'Couple' ya tiene los nombres
-                      child: Text(
-                        '${couple.nombreCliente1 ?? 'N/A'} & ${couple.nombreCliente2 ?? 'N/A'}'
-                      ),
-                    );
-                  }).toList(),
+                  items:
+                      psychController.couples.map((couple) {
+                        return DropdownMenuItem<int>(
+                          value: couple.id,
+                          // Asumiendo que el modelo 'Couple' ya tiene los nombres
+                          child: Text(
+                            '${couple.nombreCliente1 ?? 'N/A'} & ${couple.nombreCliente2 ?? 'N/A'}',
+                          ),
+                        );
+                      }).toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedCoupleId = value;
                     });
                   },
-                  validator: (value) => value == null ? 'Debe seleccionar una pareja' : null,
+                  validator:
+                      (value) =>
+                          value == null ? 'Debe seleccionar una pareja' : null,
                 ),
-              
+
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 24),
@@ -249,7 +285,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _tituloController,
                 decoration: const InputDecoration(
@@ -257,41 +293,56 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.title),
                 ),
-                validator: (value) => (value == null || value.trim().isEmpty) ? 'El título es requerido' : null,
+                validator:
+                    (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'El título es requerido'
+                            : null,
               ),
 
               const SizedBox(height: 16),
 
-              DropdownButtonFormField<String>(
-                value: _selectedTaskType,
-                hint: const Text('Seleccione un tipo de ejercicio'),
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Ejercicio *',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category_outlined),
+              SizedBox(
+                width: double.infinity,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedTaskType,
+                  hint: const Text('Seleccione Tipo de ejercicio'),
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de Ejercicio *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items:
+                      [
+                        AppConstants.communicationTask,
+                        AppConstants.mindfulnessTask,
+                        AppConstants.intimacyTask,
+                        AppConstants.conflictResolutionTask,
+                      ].map((type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          // Formateamos el texto para que sea legible
+                          child: Text(
+                            type
+                                .replaceAll('_', ' ')
+                                .toLowerCase()
+                                .capitalize(),
+                                overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTaskType = value;
+                    });
+                  },
+                  validator:
+                      (value) =>
+                          value == null ? 'Debe seleccionar un tipo' : null,
                 ),
-                items: [
-                  AppConstants.communicationTask,
-                  AppConstants.mindfulnessTask,
-                  AppConstants.intimacyTask,
-                  AppConstants.conflictResolutionTask,
-                ].map((type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    // Formateamos el texto para que sea legible
-                    child: Text(type.replaceAll('_', ' ').toLowerCase().capitalize()),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTaskType = value;
-                  });
-                },
-                validator: (value) => value == null ? 'Debe seleccionar un tipo' : null,
               ),
-
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _descripcionController,
                 maxLines: 4,
@@ -301,40 +352,49 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.description_outlined),
                 ),
-                validator: (value) => (value == null || value.trim().isEmpty) ? 'La descripción es requerida' : null,
+                validator:
+                    (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'La descripción es requerida'
+                            : null,
               ),
-              
+
               const SizedBox(height: 16),
 
               // Selector de Fecha Límite
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(4)
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.calendar_today),
                   title: Text(
-                    _selectedDate == null 
+                    _selectedDate == null
                         ? 'Seleccionar fecha límite *'
                         : 'Fecha Límite: ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
                   ),
                   onTap: () => _selectDate(context),
-                  trailing: _selectedDate != null 
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _selectedDate = null),
-                      ) 
-                    : null,
+                  trailing:
+                      _selectedDate != null
+                          ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed:
+                                () => setState(() => _selectedDate = null),
+                          )
+                          : null,
                 ),
               ),
               // Validador manual para la fecha
-              if (_formKey.currentState?.validate() == true && _selectedDate == null)
+              if (_formKey.currentState?.validate() == true &&
+                  _selectedDate == null)
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0, left: 12.0),
-                  child: Text('La fecha límite es requerida', style: TextStyle(color: Colors.red, fontSize: 12)),
+                  child: Text(
+                    'La fecha límite es requerida',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
                 ),
-
 
               const SizedBox(height: 32),
 
@@ -346,7 +406,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: const Color(0xFF595082),
                   foregroundColor: Colors.white,
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],

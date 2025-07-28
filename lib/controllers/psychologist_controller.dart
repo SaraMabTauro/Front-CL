@@ -1,37 +1,53 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:smart_habits/controllers/auth_controller.dart';
 import 'package:smart_habits/core/constants.dart';
 import '../models/psychologist_models.dart';
 import '../services/api_service.dart';
-import '../models/session_model.dart' as session_model;
+import '../models/session_model.dart';
+import '../models/task_model.dart';
 import '../models/ia_analysis_model.dart';
 import '../models/user_model.dart';
-
+import '../services/ai_service.dart';
+import '../models/ia_analysis_model.dart';
 
 class PsychologistController extends ChangeNotifier {
   static const _storage = FlutterSecureStorage();
 
   Psychologist? _currentPsychologist;
+  TherapySession? _currentTherapySession;
   List<Couple> _couples = [];
   List<TherapySession> _sessions = [];
+  List<Tarea> _coupleTasks = [];
   List<CoupleAnalysis> _analyses = [];
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
-  List<Client> _individualClients = []; // <-- AÑADIDO: Lista para clientes individuales
+  List<Client> _individualClients =
+      []; // <-- AÑADIDO: Lista para clientes individuales
 
   // Getters
   Psychologist? get currentPsychologist => _currentPsychologist;
   List<Couple> get couples => _couples;
   List<TherapySession> get sessions => _sessions;
+  List<Tarea> get coupleTasks => _coupleTasks;
   List<CoupleAnalysis> get analyses => _analyses;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
-  List<Client> get individualClients => _individualClients; // <-- AÑADIDO: Getter para clientes
+  List<Client> get individualClients =>
+      _individualClients; // <-- AÑADIDO: Getter para clientes
   bool get isAuthenticated => _currentPsychologist != null;
-  
+
+  List<TherapySession> get sessionsToday {
+    final now = DateTime.now();
+    return _sessions.where((session) {
+      return session.fechaHora.year == now.year &&
+          session.fechaHora.month == now.month &&
+          session.fechaHora.day == now.day;
+    }).toList();
+  }
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -147,35 +163,181 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
-  // <-- MÉTODO AÑADIDO ---
-  // Obtener clientes individuales del psicólogo
-  Future<void> getIndividualClients() async {
-    // Este es un método hipotético. Necesitarás un endpoint en tu backend
-    // que devuelva todos los clientes asociados a un psicólogo.
-    // Ej: GET /psicologos/:id/clientes
+  /// ¡NUEVO! Método principal para cargar todos los datos del psicólogo.
+  Future<void> fetchDashboardData(AuthController authController) async {
+    if (_currentPsychologist == null) {
+      _setError("Psicólogo no autenticado.");
+      return;
+    } // No hacer nada si no hay psicólogo
+
+    _setLoading(true);
+    _setError(null);
+    notifyListeners();
+
+    await Future.wait([
+      getCouplesForPsychologist(_currentPsychologist!.id, authController),
+      getPatientsForPsychologist(_currentPsychologist!.id),
+      getSessionsForPsychologist(_currentPsychologist!.id),
+      getCouplesAnalysis(), // Asumiendo que este obtiene todos los análisis
+    ]);
+    _setLoading(false);
+    notifyListeners();
+  }
+
+  // En PsychologistController
+
+  /// Obtiene las parejas de un psicólogo y enriquece los datos de los miembros.
+  Future<void> getCouplesForPsychologist(
+    int psychologistId,
+    AuthController authController,
+  ) async {
+    try {
+      // 1. OBTENER DATOS BASE
+      final response = await ApiService.get(
+        '/parejas/psicologo/$psychologistId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia, // URL del servicio de TERAPIA
+      );
+
+      if (response.statusCode != 200) {
+        _setError('Error al obtener la lista de parejas: ${response.body}');
+        return;
+      }
+
+      final List<dynamic> data = jsonDecode(response.body);
+      // El 'fromJson' corregido ahora funciona con esta respuesta
+      List<Couple> tempCouples =
+          data.map((item) => Couple.fromJson(item)).toList();
+
+      // 2. ENRIQUECER DATOS
+      for (var couple in tempCouples) {
+        if (couple.miembrosIds.isNotEmpty) {
+          // --- BLOQUE DE DEPURACIÓN Y LÓGICA CLARA ---
+          final userId1 = couple.miembrosIds[0].id;
+          print("Enriqueciendo... Obteniendo datos para usuario ID: $userId1");
+          final user1 = await authController.getUserById(userId1);
+          if (user1 != null) {
+            couple.nombreCliente1 = '${user1.nombre} ${user1.apellido}';
+            couple.correoCliente1 = user1.correo;
+          } else {
+            couple.nombreCliente1 = 'Usuario ID $userId1 no encontrado';
+          }
+        }
+        if (couple.miembrosIds.length > 1) {
+          final userId2 = couple.miembrosIds[1].id;
+          print("Enriqueciendo... Obteniendo datos para usuario ID: $userId2");
+          final user2 = await authController.getUserById(userId2);
+          if (user2 != null) {
+            couple.nombreCliente2 = '${user2.nombre} ${user2.apellido}';
+            couple.correoCliente2 = user2.correo;
+          } else {
+            couple.nombreCliente2 = 'Usuario ID $userId2 no encontrado';
+          }
+        }
+      }
+
+      // 3. ACTUALIZAR ESTADO
+      _couples = tempCouples;
+      print(
+        "Parejas cargadas y enriquecidas exitosamente: ${_couples.length} encontradas.",
+      );
+    } catch (e) {
+      _setError('Error de conexión general al obtener parejas: $e');
+      print('Error de conexión general al obtener parejas: $e');
+    }
+  }
+
+  Future<void> getSessionsForPsychologist(int psychologistId) async {
+    try {
+      final response = await ApiService.get(
+        '/sesiones/psicologo/$psychologistId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _sessions = data.map((item) => TherapySession.fromJson(item)).toList();
+      } else {
+        _setError('Error al obtener sesiones');
+      }
+    } catch (e) {
+      _setError('Error de conexión al obtener sesiones');
+    }
+  }
+
+  Future<bool> createIndividualTask(TareaIndividual tarea) async {
     _setLoading(true);
     _setError(null);
     try {
-      if (_currentPsychologist == null) throw Exception("Psicólogo no autenticado.");
-
-      // NOTA: Debes asegurarte de que este endpoint exista en tu API
-      final response = await ApiService.get(
-        '/psicologos/${_currentPsychologist!.id}/clientes',
+      print('Enviando JSON para crear tarea: ${jsonEncode(tarea.toJson())}');
+      final response = await ApiService.post(
+        '/asignacion-individual',
+        tarea
+            .toJson(), // Asumiendo que TareaIndividual tiene un toJson() correcto
         requireAuth: true,
-        baseUrl: AppConstants.baseUrlGestion, // O la baseUrl correcta
+        baseUrl: AppConstants.baseUrlGestion,
       );
+      if (response.statusCode == 201) {
+        _setSuccess('Tarea individual creada con éxito.');
+        _setLoading(false);
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Fallo al crear la tarea individual');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      _setLoading(false);
+      return false;
+    }
+  }
 
+  Future<bool> createCoupleTask(TareaPareja tarea) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      print('Enviando JSON para crear tarea: ${jsonEncode(tarea.toJson())}');
+      final response = await ApiService.post(
+        '/asignacion-pareja',
+        tarea.toJson(),
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 201) {
+        _setSuccess('Tarea de pareja creada con éxito.');
+        _setLoading(false);
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Fallo al crear la tarea de pareja');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<void> getPatientsForPsychologist(int psychologistId) async {
+    try {
+      final response = await ApiService.get(
+        '/psicologo/$psychologistId/pacientes',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrl, // URL de Auth/Users
+      );
       if (response.statusCode == 200) {
         final List<dynamic> clientsJson = jsonDecode(response.body);
-        // Asumimos que tienes un modelo Client.fromJson
-        _individualClients = clientsJson.map((json) => Client.fromJson(json)).toList();
+        _individualClients =
+            clientsJson.map((json) => Client.fromJson(json)).toList();
       } else {
-        _setError('Error al cargar los clientes individuales');
+        _setError('Error al cargar clientes individuales: ${response.body}');
       }
     } catch (e) {
       _setError('Error de conexión al obtener clientes: $e');
-    } finally {
-      _setLoading(false); // Asegúrate de llamar a setLoading(false) al final
     }
   }
 
@@ -209,7 +371,7 @@ class PsychologistController extends ChangeNotifier {
         // La API puede devolver el objeto actualizado. Si es así, lo usamos.
         final updatedPsychologistData = jsonDecode(response.body);
         _currentPsychologist = Psychologist.fromJson(updatedPsychologistData);
-        
+
         _setSuccess('Perfil actualizado exitosamente');
         notifyListeners(); // Notifica a la UI que los datos cambiaron
         _setLoading(false);
@@ -227,25 +389,76 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateSession(
+    int sessionId,
+    Map<String, dynamic> updates,
+  ) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.patch(
+        '/sesiones/$sessionId',
+        updates,
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
+      );
+
+      if (response.statusCode == 200) {
+        // La API puede devolver el objeto actualizado. Si es así, lo usamos.
+        final updatedSession = jsonDecode(response.body);
+        _currentTherapySession = TherapySession.fromJson(updatedSession);
+
+        // Actualizamos la sesión en nuestra lista local
+        final index = _sessions.indexWhere((s) => s.id == sessionId);
+        if (index != -1) {
+          _sessions[index] = updatedSession;
+        }
+
+        _setSuccess('Sesión actualizado exitosamente');
+        notifyListeners(); // Notifica a la UI que los datos cambiaron
+        _setLoading(false);
+        return true;
+      } else {
+        final errorData = jsonDecode(response.body);
+        _setError(
+          errorData['message'] ??
+              'No se pudo actualizar la Sesión ${response.body}',
+        );
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión al actualizar la sesión');
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Crear nueva pareja
   Future<bool> createCouple({
     // required int id,
     required int idParejaA,
     required int idParejaB,
+    required int psychologistId,
     required String objetivosTerapia,
+    required AuthController authController,
   }) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      final response = await ApiService.post('/parejas',  {
+      final response = await ApiService.post('/parejas', {
         // 'id': id,
         'idParejaA': idParejaA,
         'idParejaB': idParejaB,
+        'psychologistId': psychologistId,
         'objetivosTerapia': objetivosTerapia,
+        'estatus': 'activa',
       }, baseUrl: AppConstants.baseUrlTerapia);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
+        _setLoading(false);
+        await getCouplesForPsychologist(psychologistId, authController);
         _setLoading(false);
         return true;
       } else {
@@ -265,17 +478,26 @@ class PsychologistController extends ChangeNotifier {
     required int parejaId,
     required String estatus,
     required String objetivosTerapia,
+    required AuthController authController,
   }) async {
     _setLoading(true);
     _setError(null);
+    notifyListeners();
 
     try {
-      final response = await ApiService.patch('/parejas/$parejaId', {
-        'estatus': estatus,
-        'objetivosTerapia': objetivosTerapia,
-      });
+      final response = await ApiService.patch(
+        '/parejas/$parejaId',
+        {'estatus': estatus, 'objetivosTerapia': objetivosTerapia},
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
+      );
 
       if (response.statusCode == 200) {
+        await getCouplesForPsychologist(
+          currentPsychologist!.id,
+          authController,
+        );
+        _setSuccess('Pareja actualizada existosamente');
         _setLoading(false);
         return true;
       } else {
@@ -293,50 +515,111 @@ class PsychologistController extends ChangeNotifier {
 
   // Obtener análisis de parejas
   Future<void> getCouplesAnalysis() async {
-    _setLoading(true);
-    _setError(null);
+
     try {
-      final response = await ApiService.get(
-        '/psychologist/analysis',
-        requireAuth: true,
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> analysisJson = jsonDecode(response.body);
-        _analyses =
-            analysisJson.map((json) => CoupleAnalysis.fromJson(json)).toList();
-      } else {
-        _setError('Error al cargar análisis');
-      }
+      _analyses = await AIService.getAllCouplesAnalysis();
+      // final response = await ApiService.get(
+      //   '/psychologist/analysis',
+      //   requireAuth: true,
+      // );
+      // if (response.statusCode == 200) {
+      //   final List<dynamic> analysisJson = jsonDecode(response.body);
+      //   _analyses =
+      //       analysisJson.map((json) => CoupleAnalysis.fromJson(json)).toList();
+      // } else {
+      //   _setError('Error al cargar análisis');
+      // }
     } catch (e) {
-      _setError('Error de conexión');
+      _setError(e.toString());
     }
     _setLoading(false);
   }
 
   // Crear sesión - usando el modelo de session_model.dart
-  Future<bool> createSession(session_model.CreateSessionRequest request) async {
+  Future<bool> createSession(CreateSessionRequest request) async {
     _setLoading(true);
     _setError(null);
+    notifyListeners();
     try {
+      final jsonBody = request.toJson();
+      print("Enviando JSON para crear sesión: ${jsonEncode(jsonBody)}");
       final response = await ApiService.post(
-        '/psychologist/sessions',
+        '/sesiones',
         request.toJson(),
         requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
       );
       if (response.statusCode == 201) {
         _setSuccess('Sesión creada exitosamente');
+        // Refrescamos la lista de sesiones del psicólogo, no solo de la pareja.
+        if (_currentPsychologist != null) {
+          await getSessionsForPsychologist(_currentPsychologist!.id);
+        }
         _setLoading(false);
         return true;
       } else {
-        _setError('Error al crear sesión');
+        // Damos un mensaje de error más detallado
+        _setError(
+          'Error al crear sesión (Status ${response.statusCode}): ${response.body}',
+        );
         _setLoading(false);
         return false;
       }
     } catch (e) {
-      _setError('Error de conexión');
+      _setError('Error de conexión al crear sesión: $e');
       _setLoading(false);
       return false;
     }
+  }
+
+  // ¡NUEVO! Método para obtener las sesiones de una pareja específica.
+  Future<void> getSessionsForCouple(int coupleId) async {
+    _setLoading(true);
+    _setError(null);
+    notifyListeners();
+    try {
+      // Asumimos un endpoint como /parejas/:id/sesiones
+      final response = await ApiService.get(
+        '/parejas/$coupleId/sesiones',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _sessions = data.map((item) => TherapySession.fromJson(item)).toList();
+      } else {
+        _setError('Error al obtener las sesiones.');
+      }
+    } catch (e) {
+      _setError('Error de conexión al obtener sesiones.');
+    }
+    _setLoading(false);
+    notifyListeners();
+  }
+
+  // ¡NUEVO! Método para obtener las tareas de una pareja específica.
+  Future<void> getTasksForCouple(int coupleId) async {
+    _setLoading(true);
+    _setError(null);
+    notifyListeners();
+    try {
+      // Asumimos un endpoint como /parejas/:id/tareas
+      final response = await ApiService.get(
+        '/parejas/$coupleId/tareas',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _coupleTasks = data.map((item) => TareaPareja.fromJson(item)).toList();
+      } else {
+        _setError('Error al obtener las tareas.');
+      }
+    } catch (e) {
+      _setError('Error de conexión al obtener tareas.');
+    }
+    _setLoading(false);
+    notifyListeners();
   }
 
   Future<List<Couple>> getAllCouples() async {
@@ -386,32 +669,140 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
-  // MÉTODO FALTANTE: Generar análisis con IA
-  Future<AIAnalysisResult?> generateAIAnalysis(
-    AIAnalysisRequest request,
+  Future<bool> updateIndividualTask(
+    int taskId,
+    Map<String, dynamic> updates,
   ) async {
     _setLoading(true);
     _setError(null);
     try {
-      final response = await ApiService.post(
-        '/psychologist/analysis/generate',
-        request.toJson(),
+      final response = await ApiService.patch(
+        '/asignacion-individual/$taskId',
+        updates,
         requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
       );
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _setSuccess('Análisis generado exitosamente');
+        _setSuccess('Tarea individual actualizada exitosamente');
         _setLoading(false);
-        return AIAnalysisResult.fromJson(data);
+        return true;
       } else {
-        _setError('Error al generar análisis');
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Fallo al actualizar la tarea individual');
         _setLoading(false);
-        return null;
+        return false;
       }
     } catch (e) {
-      _setError('Error de conexión');
+      _setError('Error de conexión: $e');
       _setLoading(false);
-      return null;
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> deleteIndividualTask(int taskId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.delete(
+        '/asignacion-individual/$taskId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _setSuccess('Tarea individual eliminada exitosamente');
+        _setLoading(false);
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Fallo al eliminar la tarea individual');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      _setLoading(false);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updateCoupleTask(
+    int taskId,
+    Map<String, dynamic> updates,
+  ) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.patch(
+        '/asignacion-pareja/$taskId',
+        updates,
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200) {
+        _setSuccess('Tarea de pareja actualizada');
+        return true;
+      } else {
+        _setError('Error al actualizar tarea de pareja: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> deleteCoupleTask(int taskId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.delete(
+        '/asignacion-pareja/$taskId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _setSuccess('Tarea de pareja eliminada correctamente');
+        return true;
+      } else {
+        _setError('No se pudo eliminar la tarea de pareja');
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> deleteSession(int sessionId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await ApiService.delete(
+        '/sesiones/$sessionId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlTerapia,
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _setSuccess('Sesión eliminada correctamente');
+        return true;
+      } else {
+        _setError('No se pudo eliminar la sesión');
+        return false;
+      }
+    } catch (e) {
+      _setError('Error de conexión: $e');
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -421,107 +812,14 @@ class PsychologistController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future <void> logout() async {
+  Future<void> logout() async {
     _currentPsychologist = null;
     _couples.clear();
     _sessions.clear();
     _analyses.clear();
+    _individualClients.clear();
+
+    await _storage.delete(key: AppConstants.tokenKey);
     notifyListeners();
-  }
-}
-
-// Modelo Psicólogo
-// class Psychologist {
-//   final int id;
-//   final int usuarioId;
-//   final String cedulaProfesional;
-//   final String? cedulaDocumentoUrl;
-//   final LicenseStatus estadoLicencia;
-//   final String especialidad;
-//   final String nombre;
-//   final String apellido;
-//   final String correo;
-//   final String contrasena;
-//   final String? fotoPerfilUrl;
-//   final String telefono;
-//   final String? fechaCreacion;
-
-//   Psychologist({
-//     required this.id,
-//     required this.usuarioId,
-//     required this.cedulaProfesional,
-//     this.cedulaDocumentoUrl,
-//     required this.estadoLicencia,
-//     required this.especialidad,
-//     required this.nombre,
-//     required this.apellido,
-//     required this.correo,
-//     required this.contrasena,
-//     this.fotoPerfilUrl,
-//     required this.telefono,
-//     this.fechaCreacion,
-//   });
-
-//   factory Psychologist.fromJson(Map<String, dynamic> json) {
-//     return Psychologist(
-//       id: json['id'],
-//       usuarioId: json['usuarioId'] ?? 0,
-//       cedulaProfesional: json['cedulaProfesional'],
-//       cedulaDocumentoUrl: json['cedulaDocumentoUrl'] ?? json['cedulaDocumento'],
-//       estadoLicencia: LicenseStatus.pendiente,
-//       especialidad: json['especialidad'],
-//       nombre: json['nombre'],
-//       apellido: json['apellido'],
-//       correo: json['correo'],
-//       contrasena: json['contrasena'],
-//       fotoPerfilUrl: json['fotoPerfilUrl'],
-//       telefono: json['telefono'] ?? '',
-//       fechaCreacion: json['fechaCreacion'],
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     return {
-//       'id': id,
-//       'usuarioId': usuarioId,
-//       'cedulaProfesional': cedulaProfesional,
-//       'cedulaDocumentoUrl': cedulaDocumentoUrl,
-//       'estadoLicencia': estadoLicencia.toString().split('.').last,
-//       'especialidad': especialidad,
-//       'nombre': nombre,
-//       'apellido': apellido,
-//       'correo': correo,
-//       'contrasena': contrasena,
-//       'fotoPerfilUrl': fotoPerfilUrl,
-//       'telefono': telefono,
-//       'fechaCreacion': fechaCreacion,
-//     };
-//   }
-// }
-
-// Clase para generar análisis con IA
-class GenerateAnalysisRequest {
-  final int coupleId;
-  final String tipoAnalisis;
-  final List<String>? aspectosEspecificos;
-  final DateTime? fechaInicio;
-  final DateTime? fechaFin;
-
-  GenerateAnalysisRequest({
-    required this.coupleId,
-    required this.tipoAnalisis,
-    this.aspectosEspecificos,
-    this.fechaInicio,
-    this.fechaFin,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'coupleId': coupleId,
-      'tipoAnalisis': tipoAnalisis,
-      'aspectosEspecificos': aspectosEspecificos,
-      'fechaInicio': fechaInicio?.toIso8601String(),
-      'fechaFin': fechaFin?.toIso8601String(),
-    };
   }
 }

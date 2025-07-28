@@ -28,7 +28,7 @@ abstract class Tarea {
 class TareaIndividual extends Tarea {
   final int clienteId; 
   final DateTime? completadoEn;
-  final DateTime creadoEn;
+  final DateTime? creadoEn;
   final DateTime? actualizadoEn;
 
   TareaIndividual({
@@ -40,7 +40,7 @@ class TareaIndividual extends Tarea {
     required DateTime fechaLimite,
     required String estado,
     this.completadoEn,
-    required this.creadoEn,
+    this.creadoEn,
     this.actualizadoEn,
   }) : super(
          // Se pasan los valores comunes al constructor de Tarea
@@ -64,7 +64,7 @@ class TareaIndividual extends Tarea {
       fechaLimite: DateTime.parse(json['fechaLimite']),
       estado: json['estado'],
       completadoEn: json['completadoEn'] == null ? null : DateTime.parse(json['completadoEn']),
-      creadoEn: DateTime.parse(json['creadoEn']),
+      creadoEn: DateTime.parse(json['creadoEn']) ,
       actualizadoEn: DateTime.parse(json['actualizadoEn'] ?? DateTime.now()), // Si no hay actualizadoEn, usamos ahora
     );
   }

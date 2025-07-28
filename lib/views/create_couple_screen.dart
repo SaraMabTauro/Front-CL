@@ -130,7 +130,9 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
       final success = await psychController.createCouple(
         idParejaA: user1.id,
         idParejaB: user2.id,
+        psychologistId: psicologoId,
         objetivosTerapia: _objetivosController.text.trim(),
+        authController: authController,
       );
       if (!success) {
         throw Exception(

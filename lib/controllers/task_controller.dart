@@ -7,7 +7,6 @@ import 'auth_controller.dart';
 import '../core/constants.dart';
 
 class TaskController extends ChangeNotifier {
-
   // --- ESTADO ---
   List<TareaIndividual> _tareasIndividuales = [];
   List<TareaPareja> _tareasPareja = [];
@@ -22,7 +21,6 @@ class TaskController extends ChangeNotifier {
   String? _successMessage;
   String? _errorMessage;
   bool _isLoading = false;
-  
 
   // --- GETTERS ---
   List<TareaIndividual> get tareasIndividuales => _tareasIndividuales;
@@ -35,7 +33,6 @@ class TaskController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   User? get currentUser => _currentUser;
-
 
   // --- MÉTODOS DE GESTIÓN DE ESTADO ---
   void _setState({
@@ -58,21 +55,37 @@ class TaskController extends ChangeNotifier {
 
   // --- 3. GETTERS PARA EL TABBAR (FILTRADO EFICIENTE) ---
   // Getter para todas las tareas (para la pestaña 'Todo')
-  List<TareaIndividual> get allTasks => _tareasIndividuales;
+  List<Tarea> get allTasks {
+    return List<Tarea>.from(_tareasIndividuales)..addAll(_tareasPareja);
+  }
 
   // Getter que filtra las tareas pendientes
-  List<TareaIndividual> get pendingTasks {
-    return _tareasIndividuales.where((tarea) => tarea.estado == 'pendiente').toList();
+  List<Tarea> get pendingTasks {
+    return allTasks.where((tarea) {
+      return tarea.estado.toLowerCase().trim() == 'pendiente';
+    }).toList();
   }
 
   // Getter que filtra las tareas completadas
-  List<TareaIndividual> get completedTasks {
-    return _tareasIndividuales.where((tarea) => tarea.estado == 'completada').toList();
+  List<Tarea> get completedTasks {
+    return allTasks.where((tarea) {
+      // Aplicamos la misma lógica robusta aquí.
+      return tarea.estado.toLowerCase().trim() == 'completada';
+    }).toList();
+  }
+
+  // ¡NUEVO! Getter específico para el Dashboard (solo tareas individuales pendientes)
+  List<TareaIndividual> get pendingIndividualTasks {
+    return _tareasIndividuales
+        .where((tarea) => tarea.estado == 'pendiente')
+        .toList();
   }
 
   // ¡NUEVO! Getter que filtra las tareas RETRASADAS
-  List<TareaIndividual> get overdueTasks {
-    return _tareasIndividuales.where((tarea) => tarea.estado == 'Declinado').toList();
+  List<Tarea> get overdueTasks {
+    return allTasks.where((tarea) {
+      return tarea.estado.toLowerCase().trim() == 'demorado';
+    }).toList();
   }
 
   void _setLoading(bool loading) {
@@ -98,25 +111,25 @@ class TaskController extends ChangeNotifier {
 
   // POST: Crear una nueva tarea individual
   Future<bool> createTareaIndividual(TareaIndividual tarea) async {
-
     _setLoading(true);
     _setError(null);
-    try{
-      final response = await ApiService.post('/asignacion-individual',
-      tarea.toJson(),
-      requireAuth: true,
-      baseUrl: AppConstants.baseUrlGestion
+    try {
+      final response = await ApiService.post(
+        '/asignacion-individual',
+        tarea.toJson(),
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
       );
 
       if (response.statusCode == 201) {
-      _setLoading(false);
-      return true;
-    } else {
-      final data = jsonDecode(response.body);
-      _setError(data['message'] ?? 'Error al crear la tarea individual.');
-      _setLoading(false);
-      return false;
-    }
+        _setLoading(false);
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _setError(data['message'] ?? 'Error al crear la tarea individual.');
+        _setLoading(false);
+        return false;
+      }
     } catch (e) {
       _setError('Error de conexión. Por favor, intente de nuevo.');
       _setLoading(false);
@@ -124,7 +137,7 @@ class TaskController extends ChangeNotifier {
     }
   }
 
-    Future<bool> submitFeedbackAndCompleteTask({
+  Future<bool> submitFeedbackAndCompleteTask({
     required Tarea task,
     required AuthController authController,
     required int satisfaction,
@@ -153,10 +166,14 @@ class TaskController extends ChangeNotifier {
 
     // 2. Determinamos el endpoint correcto basado en el tipo de tarea
     String feedbackEndpoint;
+    String completeTaskEndpoint;
+
     if (task is TareaIndividual) {
       feedbackEndpoint = '/retroalimentaciones/individuales';
+      completeTaskEndpoint = '/asignacion-individual/${task.id}';
     } else if (task is TareaPareja) {
       feedbackEndpoint = '/retroalimentaciones/pareja';
+      completeTaskEndpoint = '/asignacion-pareja/${task.id}';
     } else {
       _setError("Tipo de tarea desconocido.");
       _setLoading(false);
@@ -164,24 +181,32 @@ class TaskController extends ChangeNotifier {
     }
 
     try {
-      // --- PRIMERA LLAMADA: Enviar la retroalimentación ---
+      final jsonBody = feedbackData.toJson();
+      print('--- INICIO DEPURACIÓN FEEDBACK ---');
+      print('Endpoint: $feedbackEndpoint');
+      print('JSON Enviado: ${jsonEncode(jsonBody)}');
+      print('--- FIN DEPURACIÓN FEEDBACK ---');
+      
       final feedbackResponse = await ApiService.post(
         feedbackEndpoint,
-        feedbackData.toJson(),
+        jsonBody,
         requireAuth: true,
-        baseUrl: AppConstants.baseUrlGestion, // Asegúrate de que esta es la baseUrl correcta
+        baseUrl:
+            AppConstants
+                .baseUrlGestion, // Asegúrate de que esta es la baseUrl correcta
       );
 
       if (feedbackResponse.statusCode != 201) {
-        _setError('Fallo al enviar la retroalimentación: ${feedbackResponse.body}');
+        _setError(
+          'Fallo al enviar la retroalimentación: ${feedbackResponse.body}',
+        );
         _setLoading(false);
         return false;
       }
 
       // --- SEGUNDA LLAMADA: Marcar la tarea como completada ---
       final completeResponse = await ApiService.patch(
-        // El endpoint para actualizar el estado es diferente
-        '/asignacion-individual/${task.id}', 
+        completeTaskEndpoint,
         {'estado': 'completada'},
         requireAuth: true,
         baseUrl: AppConstants.baseUrlGestion,
@@ -190,22 +215,30 @@ class TaskController extends ChangeNotifier {
       if (completeResponse.statusCode != 200) {
         // La retroalimentación se envió, pero el estado no se actualizó.
         // Es un éxito parcial, pero lo marcaremos como error para que el usuario sepa.
-        _setError('Retroalimentación enviada, pero falló al actualizar el estado de la tarea.');
+        _setError(
+          'Retroalimentación enviada, pero falló al actualizar el estado de la tarea.',
+        );
         _setLoading(false);
         return false;
       }
 
       // Si ambas llamadas fueron exitosas, refrescamos la lista de tareas
-      await getIndividualTasksForUser(authController);
-      _setSuccess('¡Tarea completada con éxito!');
-      _setLoading(false);
-      return true;
-
+      if (completeResponse.statusCode == 200 ||
+          completeResponse.statusCode == 201) {
+        // ¡Refrescamos TODAS las tareas!
+        await getAllTasksForUser(authController);
+        _setSuccess('¡Tarea completada con éxito!');
+        _setLoading(false);
+        return true;
+      }
     } catch (e) {
       _setError('Error de conexión: $e');
       _setLoading(false);
       return false;
     }
+
+    _setLoading(false);
+    return false;
   }
 
   Future<bool> createTareaPareja(TareaPareja tarea) async {
@@ -235,6 +268,56 @@ class TaskController extends ChangeNotifier {
     }
   }
 
+  /// ¡NUEVO! Un método principal para cargar TODAS las tareas del usuario.
+  Future<void> getAllTasksForUser(AuthController authController) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    // Usamos Future.wait para ejecutar ambas llamadas a la API en paralelo.
+    // Esto es más rápido que hacer una y luego la otra.
+    await Future.wait([
+      getIndividualTasksForUser(authController),
+      getCoupleTasksForUser(authController),
+    ]);
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// ¡NUEVO! Obtiene las tareas de pareja.
+  Future<void> getCoupleTasksForUser(AuthController authController) async {
+    if (!authController.isAuthenticated || authController.currentUser == null) {
+      _errorMessage = "Usuario no autenticado.";
+      return;
+    }
+    final userId = authController.currentUser!.id;
+
+    try {
+      final response = await ApiService.get(
+        '/asignacion-pareja/tareas-por-usuario/$userId', // <-- Usamos el nuevo endpoint
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        if (data['tareas'] != null && data['tareas'] is List) {
+          final List<dynamic> taskList = data['tareas'];
+
+          _tareasPareja =
+              taskList.map((item) => TareaPareja.fromJson(item)).toList();
+        } else {
+          _tareasPareja = [];
+        }
+      } else {
+        _errorMessage = 'Error al obtener tareas de pareja.';
+      }
+    } catch (e) {
+      _errorMessage = 'Error de conexión en tareas de pareja.';
+    }
+  }
+
   // GET: Obtener todas las tareas individuales
   Future<void> getIndividualTasksForUser(AuthController authController) async {
     // Verificamos que el usuario esté logueado
@@ -243,7 +326,7 @@ class TaskController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     final userId = authController.currentUser!.id;
 
     _isLoading = true;
@@ -260,10 +343,12 @@ class TaskController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         // Usamos el modelo corregido para parsear la respuesta
-        _tareasIndividuales = data.map((item) => TareaIndividual.fromJson(item)).toList();
+        _tareasIndividuales =
+            data.map((item) => TareaIndividual.fromJson(item)).toList();
       } else {
         final data = jsonDecode(response.body);
-        _errorMessage = data['message'] ?? 'Error al obtener las tareas del usuario.';
+        _errorMessage =
+            data['message'] ?? 'Error al obtener las tareas del usuario.';
       }
     } catch (e) {
       _errorMessage = 'Error de conexión. Por favor, intente de nuevo.';
@@ -310,50 +395,7 @@ class TaskController extends ChangeNotifier {
       throw Exception('Falló al eliminar la tarea individual');
     }
   }
-
-      // --- 4. NUEVO MÉTODO PARA COMPLETAR TAREA ---
-    //   Future<bool> completeTask(int taskId, TaskFeedback feedback, AuthController authController) async {
-    //     _isLoading = true;
-    //     _errorMessage = null;
-    //     notifyListeners();
-
-    //     try {
-    //       // Prepara el cuerpo de la petición PATCH
-    //       final body = {
-    //         'estado': 'completada', // Cambia el estado
-    //         ...feedback.toJson(),    // Agrega los datos del feedback
-    //       };
-
-    //       // Usa el ApiService para hacer la petición PATCH
-    //       final response = await ApiService.patch('/asignacion-individual/$taskId', body, baseUrl: AppConstants.baseUrlGestion);
-
-    //       if (response.statusCode == 200) {
-
-    //         await getIndividualTasksForUser(authController);
-    //         // La API devuelve la tarea actualizada, la decodificamos
-    //         final tareaActualizada = TareaIndividual.fromJson(jsonDecode(response.body));
-
-    //         // Actualizamos la tarea en nuestra lista local para que la UI reaccione
-    //         final index = _tareasIndividuales.indexWhere((t) => t.id == taskId);
-    //         if (index != -1) {
-    //           _tareasIndividuales[index] = tareaActualizada;
-    //         }
-
-    //         _setSuccess('Tarea completada con éxito.');
-    //         _setLoading(false); // Notifica a los listeners del cambio
-    //         return true;
-    //       } else {
-    //         _setError('Error al completar la tarea: ${response.body}');
-    //         _setLoading(false);
-    //         return false;
-    //       }
-    //     } catch (e) {
-    //       _setError('Error de conexión al completar la tarea.');
-    //       _setLoading(false);
-    //       return false;
-    //     }
-    //   }
-   }
+}
 
 class TareaParejaController {
   // POST: Crear una nueva tarea de pareja

@@ -279,14 +279,16 @@ class AuthController extends ChangeNotifier {
 
   Future<User?> getUserById(int id) async {
   try {
-    final response = await ApiService.get('/usuario/$id');
+    final response = await ApiService.get('/usuario/$id',requireAuth: true , baseUrl: AppConstants.baseUrl);
     if (response.statusCode == 200) {
       return User.fromJson(jsonDecode(response.body));
     } else {
+      print('No se encontró el usuario $id: ${response.statusCode}');
       _setError('No se encontró el usuario');
       return null;
     }
   } catch (e) {
+    print('Error de conexión al obtener usuario $id: $e');
     _setError('Error de conexión');
     return null;
   }

@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final taskController= Provider.of<TaskController>(context, listen: false);
       final authController = Provider.of<AuthController>(context, listen: false);
 
-      taskController.getIndividualTasksForUser(authController);
+      taskController.getAllTasksForUser(authController);
     });
   }
 
@@ -188,7 +188,7 @@ class DashboardTab extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
               
-              final pendingTasks = taskController.pendingTasks.take(3).toList();
+              final pendingTasks = taskController.pendingIndividualTasks.take(3).toList();
               
               if (pendingTasks.isEmpty) {
                 return Container(
@@ -503,7 +503,7 @@ class TasksTab extends StatelessWidget {
 }
 
 class _TaskList extends StatelessWidget {
-  final List<TareaIndividual> tasks;
+  final List<Tarea> tasks;
   const _TaskList({required this.tasks});
 
   @override
@@ -611,7 +611,7 @@ return GestureDetector(
     switch (status) {
       case 'pendiente':
         return const Color(0xFFF8C662);
-      case 'completado':
+      case 'completada':
         return const Color(0xFF41644A);
       case 'Declinado':
         return Colors.red;

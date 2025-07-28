@@ -2,15 +2,15 @@
 enum UserRole { cliente, psicologo, administrador }
 enum LicenseStatus { pendiente, verificada, rechazada }
 enum CoupleStatus { pendienteAprobacion, activa, inactiva, rechazada }
-enum SessionStatus { agendada, completada, cancelada }
+// enum SessionStatus { agendada, completada, cancelada }
 enum TaskStatus { pendiente, completada, retrasada }
-enum TaskType { 
-  ejercicioComunicacion, 
-  actividadAfectiva, 
-  resolucionConflictos, 
-  reflexionIndividual, 
-  exploracionExpectativas 
-}
+// enum TaskType { 
+//   ejercicioComunicacion, 
+//   actividadAfectiva, 
+//   resolucionConflictos, 
+//   reflexionIndividual, 
+//   exploracionExpectativas 
+// }
 
 // Modelo Psicólogo
 class Psychologist {
@@ -119,147 +119,62 @@ class Psychologist {
 // Modelo Pareja
 class Couple {
   final int id;
-  final int psicologoId;
-  final int cliente1Id;
-  final int cliente2Id;
   final CoupleStatus estado;
   final String? objetivosTerapia;
   final DateTime creadoEn;
-  final String? nombreCliente1;
-  final String? nombreCliente2;
-  final String? correoCliente1;
-  final String? correoCliente2;
+  String? nombreCliente1;
+  String? nombreCliente2;
+  String? correoCliente1;
+  String? correoCliente2;
+  final List<CoupleMemberId> miembrosIds;
+
+  String get fullCoupleName {
+    final name1 = nombreCliente1 ?? 'Cliente 1';
+    final name2 = nombreCliente2 ?? 'Cliente 2';
+    return '$name1 & $name2';
+  }
 
   Couple({
     required this.id,
-    required this.psicologoId,
-    required this.cliente1Id,
-    required this.cliente2Id,
     required this.estado,
     this.objetivosTerapia,
     required this.creadoEn,
-    this.nombreCliente1,
-    this.nombreCliente2,
-    this.correoCliente1,
-    this.correoCliente2,
+    required this.miembrosIds,
   });
 
   factory Couple.fromJson(Map<String, dynamic> json) {
+
+    var miembrosList = json['miembros'] as List? ?? []; // Manejo seguro de nulos
+    List<CoupleMemberId> miembrosIds = miembrosList.map((i) => CoupleMemberId.fromJson(i)).toList();
+
     return Couple(
       id: json['id'],
-      psicologoId: json['psicologoId'],
-      cliente1Id: json['cliente1Id'],
-      cliente2Id: json['cliente2Id'],
       estado: CoupleStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == json['estado']
+        (e) => e.name == json['estatus'],
+        orElse: () => CoupleStatus.inactiva,
       ),
       objetivosTerapia: json['objetivosTerapia'],
-      creadoEn: DateTime.parse(json['creadoEn']),
-      nombreCliente1: json['nombreCliente1'],
-      nombreCliente2: json['nombreCliente2'],
-      correoCliente1: json['correoCliente1'],
-      correoCliente2: json['correoCliente2'],
+      creadoEn: DateTime.parse(json['fechaCreacion']),
+      miembrosIds: miembrosIds,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'psicologoId': psicologoId,
-      'cliente1Id': cliente1Id,
-      'cliente2Id': cliente2Id,
-      'estado': estado.toString().split('.').last,
+      'estatus': estado.toString().split('.').last,
       'objetivosTerapia': objetivosTerapia,
       'creadoEn': creadoEn.toIso8601String(),
     };
   }
 }
 
-// Modelo Sesión
-class TherapySession {
+class CoupleMemberId {
   final int id;
-  final int parejaId;
-  final DateTime fechaSesion;
-  final double? costo;
-  final SessionStatus estado;
-  final String? notasSesion;
+  CoupleMemberId({required this.id});
 
-  TherapySession({
-    required this.id,
-    required this.parejaId,
-    required this.fechaSesion,
-    this.costo,
-    required this.estado,
-    this.notasSesion,
-  });
-
-  factory TherapySession.fromJson(Map<String, dynamic> json) {
-    return TherapySession(
-      id: json['id'],
-      parejaId: json['parejaId'],
-      fechaSesion: DateTime.parse(json['fechaSesion']),
-      costo: json['costo']?.toDouble(),
-      estado: SessionStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == json['estado']
-      ),
-      notasSesion: json['notasSesion'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'parejaId': parejaId,
-      'fechaSesion': fechaSesion.toIso8601String(),
-      'costo': costo,
-      'estado': estado.toString().split('.').last,
-      'notasSesion': notasSesion,
-    };
-  }
-}
-
-// Modelo Análisis de Pareja
-class CoupleAnalysis {
-  final int parejaId;
-  final String nombrePareja;
-  final double promedioSentimientoIndividual;
-  final double tasaCompletacionTareas;
-  final double promedioEstresIndividual;
-  final double empatiaGapScore;
-  final double interaccionBalanceRatio;
-  final int recuentoDeteccionCicloNegativo;
-  final double prediccionRiesgoRuptura;
-  final DateTime fechaTendencia;
-  final List<String> insightsRecientes;
-
-  CoupleAnalysis({
-    required this.parejaId,
-    required this.nombrePareja,
-    required this.promedioSentimientoIndividual,
-    required this.tasaCompletacionTareas,
-    required this.promedioEstresIndividual,
-    required this.empatiaGapScore,
-    required this.interaccionBalanceRatio,
-    required this.recuentoDeteccionCicloNegativo,
-    required this.prediccionRiesgoRuptura,
-    required this.fechaTendencia,
-    required this.insightsRecientes,
-  });
-
-  factory CoupleAnalysis.fromJson(Map<String, dynamic> json) {
-    return CoupleAnalysis(
-      parejaId: json['parejaId'],
-      nombrePareja: json['nombrePareja'],
-      promedioSentimientoIndividual: json['promedioSentimientoIndividual']?.toDouble() ?? 0.0,
-      tasaCompletacionTareas: json['tasaCompletacionTareas']?.toDouble() ?? 0.0,
-      promedioEstresIndividual: json['promedioEstresIndividual']?.toDouble() ?? 0.0,
-      empatiaGapScore: json['empatiaGapScore']?.toDouble() ?? 0.0,
-      interaccionBalanceRatio: json['interaccionBalanceRatio']?.toDouble() ?? 0.0,
-      recuentoDeteccionCicloNegativo: json['recuentoDeteccionCicloNegativo'] ?? 0,
-      prediccionRiesgoRuptura: json['prediccionRiesgoRuptura']?.toDouble() ?? 0.0,
-      fechaTendencia: DateTime.parse(json['fechaTendencia']),
-      insightsRecientes: List<String>.from(json['insightsRecientes'] ?? []),
-    );
+  factory CoupleMemberId.fromJson(Map<String, dynamic> json) {
+    return CoupleMemberId(id: json['id']);
   }
 }
 
@@ -295,4 +210,5 @@ class CreateCoupleRequest {
     };
   }
 }
+
 
