@@ -6,6 +6,7 @@ import '../models/ia_analysis_model.dart';
 import '../models/session_model.dart';
 import 'package:collection/collection.dart';
 import '../controllers/auth_controller.dart';
+import '../models/task_model.dart'; 
 
 class PsychologistDashboardScreen extends StatefulWidget {
   const PsychologistDashboardScreen({super.key});
@@ -1232,85 +1233,124 @@ class _MetricItem extends StatelessWidget {
   }
 }
 
+// ... (dentro de psychologist_dashboard_screen.dart)
+
 class _TasksManagement extends StatelessWidget {
   const _TasksManagement();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
+    // 1. Envolvemos todo en un Consumer para obtener acceso a 'psychController'
+    return Consumer<PsychologistController>(
+      builder: (context, psychController, child) {
+        return Column(
+          children: [
+            // Header (Tu código aquí ya es perfecto)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.assignment, color: Color(0xFF595082), size: 28),
-                  SizedBox(width: 12),
-                  Text(
-                    'Gestión de Tareas',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF20263F),
+                  const Row(
+                    children: [
+                      Icon(Icons.assignment, color: Color(0xFF595082), size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        'Gestión de Tareas',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF20263F),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/create-task');
+                    },
+                    icon: const Icon(Icons.add),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF595082),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
               ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/create-task');
-                },
-                icon: const Icon(Icons.add),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF595082),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Contenido de tareas (placeholder por ahora)
-        const Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.assignment_turned_in_outlined,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Asignar y dar seguimiento a las tareas',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Próximamente disponible',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
             ),
-          ),
+
+            // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+            // 2. El Expanded ahora tiene UN SOLO child, que es el resultado del método _buildTaskList.
+            Expanded(
+              child: _buildTaskList(psychController),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 3. El método auxiliar _buildTaskList contiene TODA la lógica condicional
+  Widget _buildTaskList(PsychologistController psychController) {
+    // Usamos el getter combinado que creamos
+    final allTasks = psychController.allAssignedTasks;
+
+    // Caso 1: Cargando datos
+    if (psychController.isLoading && allTasks.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    // Caso 2: No hay tareas asignadas
+    if (allTasks.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_late_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('No hay tareas asignadas', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            SizedBox(height: 8),
+            Text('Presiona el botón "+" para crear una nueva.', style: TextStyle(fontSize: 14, color: Colors.grey)),
+          ],
         ),
-      ],
+      );
+    }
+
+    // Caso 3: Mostrar la lista de tareas
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: allTasks.length,
+      itemBuilder: (context, index) {
+        final task = allTasks[index];
+        // Aquí puedes usar un widget de tarjeta de tarea personalizado
+        return Card(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: ListTile(
+            leading: Icon(
+              task.type == TaskType.individual ? Icons.person : Icons.group,
+              color: const Color(0xFF595082),
+            ),
+            title: Text(task.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('Estado: ${task.estado}'),
+            trailing: Text('Vence: ${task.fechaLimite.day}/${task.fechaLimite.month}'),
+            onTap: () {
+              // TODO: Navegar a una pantalla de detalle de tarea para el psicólogo
+            },
+          ),
+        );
+      },
     );
   }
 }
-// ... (dentro de psychologist_dashboard_screen.dart)
+
+
 
 class _SessionsManagement extends StatelessWidget {
   const _SessionsManagement();
 
   @override
   Widget build(BuildContext context) {
-    // Usamos 'watch' para que la UI se reconstruya cuando los datos de sesiones cambien.
     return Consumer<PsychologistController>(
       builder: (context, psychController, child) {
         return Column(
@@ -1530,6 +1570,8 @@ class _SessionCard extends StatelessWidget {
         return Colors.green;
       case SessionStatus.cancelada:
         return Colors.red;
+      case SessionStatus.activa:
+        return Colors.purple;
     }
   }
 }

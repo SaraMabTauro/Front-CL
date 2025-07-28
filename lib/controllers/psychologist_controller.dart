@@ -10,7 +10,6 @@ import '../models/task_model.dart';
 import '../models/ia_analysis_model.dart';
 import '../models/user_model.dart';
 import '../services/ai_service.dart';
-import '../models/ia_analysis_model.dart';
 
 class PsychologistController extends ChangeNotifier {
   static const _storage = FlutterSecureStorage();
@@ -24,8 +23,9 @@ class PsychologistController extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
-  List<Client> _individualClients =
-      []; // <-- AÑADIDO: Lista para clientes individuales
+  List<Client> _individualClients = [];
+  List<TareaIndividual> _individualTasksAssigned = [];
+  List<TareaPareja> _coupleTasksAssigned = [];
 
   // Getters
   Psychologist? get currentPsychologist => _currentPsychologist;
@@ -36,9 +36,12 @@ class PsychologistController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
-  List<Client> get individualClients =>
-      _individualClients; // <-- AÑADIDO: Getter para clientes
+  List<Client> get individualClients => _individualClients;
   bool get isAuthenticated => _currentPsychologist != null;
+  List<Tarea> get allAssignedTasks {
+    return List<Tarea>.from(_individualTasksAssigned)
+      ..addAll(_coupleTasksAssigned);
+  }
 
   List<TherapySession> get sessionsToday {
     final now = DateTime.now();
@@ -178,15 +181,59 @@ class PsychologistController extends ChangeNotifier {
       getCouplesForPsychologist(_currentPsychologist!.id, authController),
       getPatientsForPsychologist(_currentPsychologist!.id),
       getSessionsForPsychologist(_currentPsychologist!.id),
-      getCouplesAnalysis(), // Asumiendo que este obtiene todos los análisis
+      getAllTasksForPsychologist(_currentPsychologist!.id),
+      getCouplesAnalysis(),
     ]);
     _setLoading(false);
     notifyListeners();
   }
 
-  // En PsychologistController
+  Future<void> getAllTasksForPsychologist(int psychologistId) async {
+    // Ejecutamos ambas en paralelo para eficiencia
+    await Future.wait([
+      getIndividualTasksForPsychologist(psychologistId),
+      getCoupleTasksForPsychologist(psychologistId),
+    ]);
+  }
 
-  /// Obtiene las parejas de un psicólogo y enriquece los datos de los miembros.
+  /// Obtiene las tareas individuales asignadas por un psicólogo.
+  Future<void> getIndividualTasksForPsychologist(int psychologistId) async {
+    try {
+      final response = await ApiService.get(
+        '/asignacion-individual/por-psicologo/$psychologistId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _individualTasksAssigned =
+            data.map((item) => TareaIndividual.fromJson(item)).toList();
+      }
+    } catch (e) {
+      print('Error al obtener tareas individuales del psicólogo: $e');
+    }
+  }
+
+  // Obtiene las tareas de pareja asignadas por un psicólogo.
+  Future<void> getCoupleTasksForPsychologist(int psychologistId) async {
+    try {
+      // NOTA: Necesitarás un endpoint como este en tu backend.
+      // Si no lo tienes, puedes omitir esta llamada por ahora.
+      final response = await ApiService.get(
+        '/asignacion-pareja/por-psicologo/$psychologistId',
+        requireAuth: true,
+        baseUrl: AppConstants.baseUrlGestion,
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _coupleTasksAssigned = data.map((item) => TareaPareja.fromJson(item)).toList();
+      }
+    } catch (e) {
+      print('Error al obtener tareas de pareja del psicólogo: $e');
+    }
+  }
+
+
   Future<void> getCouplesForPsychologist(
     int psychologistId,
     AuthController authController,
@@ -247,20 +294,39 @@ class PsychologistController extends ChangeNotifier {
     }
   }
 
+  // En PsychologistController
+
+  /// Obtiene las sesiones de un psicólogo.
   Future<void> getSessionsForPsychologist(int psychologistId) async {
     try {
+      final endpoint = '/sesiones/psicologo/$psychologistId';
+      print("Depuración: Llamando al endpoint de sesiones: $endpoint");
+
       final response = await ApiService.get(
-        '/sesiones/psicologo/$psychologistId',
+        endpoint,
         requireAuth: true,
-        baseUrl: AppConstants.baseUrlTerapia,
+        baseUrl: AppConstants.baseUrlTerapia, // Esta baseUrl es correcta
       );
+
+      print("Depuración: Respuesta del servidor de sesiones - Status: ${response.statusCode}");
+      
       if (response.statusCode == 200) {
+        print("Depuración: Cuerpo de la respuesta de sesiones: ${response.body}");
         final List<dynamic> data = jsonDecode(response.body);
-        _sessions = data.map((item) => TherapySession.fromJson(item)).toList();
+        
+        // Hacemos el parseo dentro de un try-catch para aislar errores de modelo
+        try {
+          _sessions = data.map((item) => TherapySession.fromJson(item)).toList();
+          print("Depuración: Parseo de ${data.length} sesiones exitoso.");
+        } catch (e) {
+          print("¡ERROR DE PARSEO EN EL MODELO! Revisa TherapySession.fromJson. Error: $e");
+          _setError("Error al procesar los datos de las sesiones.");
+        }
       } else {
-        _setError('Error al obtener sesiones');
+        _setError('Error al obtener sesiones (Status ${response.statusCode})');
       }
     } catch (e) {
+      print("Depuración: CATCH general al obtener sesiones: $e");
       _setError('Error de conexión al obtener sesiones');
     }
   }
@@ -515,7 +581,6 @@ class PsychologistController extends ChangeNotifier {
 
   // Obtener análisis de parejas
   Future<void> getCouplesAnalysis() async {
-
     try {
       _analyses = await AIService.getAllCouplesAnalysis();
       // final response = await ApiService.get(

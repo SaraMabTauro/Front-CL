@@ -1,4 +1,5 @@
- enum SessionStatus { programada, enProgreso, completada, cancelada }
+enum SessionStatus { programada, enProgreso, completada, cancelada, activa }
+
 enum SessionType { individual, pareja, grupal, seguimiento }
 
 class TherapySession {
@@ -41,9 +42,18 @@ class TherapySession {
       descripcion: json['descripcion'],
       fechaHora: DateTime.parse(json['fechaHora']),
       duracionMinutos: json['duracionMinutos'],
-      tipo: SessionType.values.firstWhere((e) => e.toString().split('.').last == json['tipo']),
-      estado: SessionStatus.values.firstWhere((e) => e.toString().split('.').last == json['estado']),
-      costo: json['costo']?.toDouble() ?? 0.0,
+      tipo: SessionType.values.firstWhere(
+        (e) => e.name == json['tipo'],
+        orElse:
+            () =>
+                SessionType
+                    .pareja, // Valor por defecto si la API envía algo inesperado
+      ),
+      estado: SessionStatus.values.firstWhere(
+        (e) => e.name == json['estado'],
+        orElse: () => SessionStatus.programada, // Valor po
+      ),
+      costo: double.tryParse(json['costo']?.toString() ?? '0.0') ?? 0.0,
       notas: json['notas'],
       objetivos: json['objetivos'],
       creadoEn: DateTime.parse(json['creadoEn']),
@@ -106,12 +116,9 @@ class CreateSessionRequest {
       'duracionMinutos': duracionMinutos,
       'tipo': tipo.toString().split('.').last,
       'estado': estado.toString().split('.').last, // <-- CAMPO AÑADIDO
-      'costo': costo,
-      'notas': notas,
-      'objetivos': objetivos,
     };
   }
- }
+}
 
 // class TherapySession {
 //   final int? id;
