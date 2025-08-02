@@ -44,3 +44,23 @@ class CoupleAnalysis {
     );
   }
 }
+
+class AIAnalysisRequest {
+  final int coupleId;
+  final String analysisType;
+  final Map<String, dynamic> parameters;
+
+  AIAnalysisRequest({
+    required this.coupleId,
+    required this.analysisType,
+    required this.parameters,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'coupleId': coupleId,
+      'analysisType': analysisType,
+      'parameters': parameters,
+    };
+  }
+}

@@ -235,16 +235,15 @@ class DashboardTab extends StatelessWidget {
                                   color: Color(0xFF20263F),
                                 ),
                               ),
-                              if (task.descripcion != null)
-                                Text(
-                                  task.descripcion!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                task.descripcion,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         ),
@@ -577,28 +576,28 @@ return GestureDetector(
             ),
           ],
         ),
-        if (task.descripcion != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            task.descripcion!,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+        ...[
+        const SizedBox(height: 8),
+        Text(
+          task.descripcion,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
           ),
-        ],
-        if (task.fechaLimite != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Due: ${_formatDate(task.fechaLimite!)}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF595082),
-            ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+        ...[
+        const SizedBox(height: 8),
+        Text(
+          'Due: ${_formatDate(task.fechaLimite)}',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF595082),
           ),
-        ],
+        ),
+      ],
       ],
     ),
   ),

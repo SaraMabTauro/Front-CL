@@ -73,14 +73,13 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final coupleName =
-        context
-            .watch<PsychologistController>()
-            .couples
-            .firstWhereOrNull((c) => c.id == widget.coupleId)
-            ?.fullCoupleName ??
-        'Cargando...';
-    if (_couple == null) {
+    final coupleData = context
+        .watch<PsychologistController>()
+        .couples
+        .firstWhereOrNull((c) => c.id == widget.coupleId);
+    final coupleName = coupleData?.fullCoupleName ?? 'Cargando...';
+
+    if (coupleData == null) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Cargando Pareja...'),
@@ -90,6 +89,12 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    _couple = coupleData;
+    _analysis = context
+        .watch<PsychologistController>()
+        .analyses
+        .firstWhereOrNull((a) => a.parejaId == widget.coupleId);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -167,7 +172,11 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
           _OverviewTab(couple: _couple!, analysis: _analysis),
           _TasksTab(couple: _couple!),
           _DiariesTab(couple: _couple!),
-          _AnalysisTab(couple: _couple!, analysis: _analysis, onRefresh: _refreshAIAnalysis,),
+          _AnalysisTab(
+            couple: _couple!,
+            analysis: _analysis,
+            onRefresh: _refreshAIAnalysis,
+          ),
         ],
       ),
     );
@@ -449,7 +458,7 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
   void _showScheduleSessionDialog() {
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
-    final _tituloController = TextEditingController();
+    final tituloController = TextEditingController();
     final notesController = TextEditingController();
     final costoController = TextEditingController();
     final objetivosController = TextEditingController();
@@ -469,6 +478,19 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          TextFormField(
+                            controller: tituloController,
+                            decoration: const InputDecoration(
+                              labelText: 'Título de la Sesión *',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator:
+                                (value) =>
+                                    (value == null || value.isEmpty)
+                                        ? 'El título es requerido'
+                                        : null,
+                          ),
+                          const SizedBox(height: 16),
                           ListTile(
                             title: const Text('Fecha'),
                             subtitle: Text(
@@ -493,7 +515,7 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
                           ),
                           ListTile(
                             title: const Text('Hora'),
-                            subtitle: Text('${selectedTime.format(context)}'),
+                            subtitle: Text(selectedTime.format(context)),
                             trailing: const Icon(Icons.access_time),
                             onTap: () async {
                               final time = await showTimePicker(
@@ -612,12 +634,12 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
                           idPareja: _couple!.id,
                           psychologistId:
                               psychController.currentPsychologist!.id,
-                          titulo: _tituloController.text,
+                          titulo: tituloController.text,
                           descripcion: notesController.text,
                           fechaHora: fechaHora,
                           duracionMinutos: selectedDuracion,
                           tipo: SessionType.pareja,
-                          estado: SessionStatus.programada,
+                          estado: SessionStatus.activa,
                           costo: double.tryParse(costoController.text) ?? 0.0,
                           notas: notesController.text,
                           objetivos: objetivosController.text,
@@ -684,26 +706,31 @@ class _CoupleDetailScreenState extends State<CoupleDetailScreen>
       context,
       listen: false,
     );
-    psychController.getCouplesAnalysis().then((_) {
-      Navigator.of(context).pop(); 
-      
-      _loadInitialData(); 
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Análisis actualizado.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }).catchError((error) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(psychController.errorMessage ?? 'Error al actualizar análisis.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    });
+    psychController
+        .getCouplesAnalysis()
+        .then((_) {
+          Navigator.of(context).pop();
+
+          _loadInitialData();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Análisis actualizado.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        })
+        .catchError((error) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                psychController.errorMessage ?? 'Error al actualizar análisis.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        });
   }
 }
 
@@ -1286,7 +1313,11 @@ class _AnalysisTab extends StatelessWidget {
   final CoupleAnalysis? analysis;
   final VoidCallback onRefresh;
 
-  const _AnalysisTab({required this.couple, this.analysis, required this.onRefresh});
+  const _AnalysisTab({
+    required this.couple,
+    this.analysis,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1502,7 +1533,10 @@ class _AnalysisTab extends StatelessWidget {
     }
   }
 
-  void _showGenerateAnalysisDialog(BuildContext context, VoidCallback onRefresh) {
+  void _showGenerateAnalysisDialog(
+    BuildContext context,
+    VoidCallback onRefresh,
+  ) {
     showDialog(
       context: context,
       builder:

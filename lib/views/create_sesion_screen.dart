@@ -7,8 +7,7 @@ import '../controllers/auth_controller.dart';
 class CreateSessionScreen extends StatefulWidget {
   final int? preselectedCoupleId;
 
-  const CreateSessionScreen({Key? key, this.preselectedCoupleId})
-    : super(key: key);
+  const CreateSessionScreen({super.key, this.preselectedCoupleId});
 
   @override
   State<CreateSessionScreen> createState() => _CreateSessionScreenState();
@@ -134,6 +133,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     print("ID de Psicólogo: ${currentPsychologist.id}");
     print("Título: ${_tituloController.text}");
 
+    final costoText = _costoController.text.trim();
+    if (costoText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El costo es un campo obligatorio.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     final fechaHora = DateTime(
       _selectedDate.year,
       _selectedDate.month,
@@ -155,8 +162,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       fechaHora: fechaHora,
       duracionMinutos: _duracionMinutos,
       tipo: _selectedType,
-      estado: SessionStatus.programada,
-      costo: double.tryParse(_costoController.text) ?? 0.0,
+      estado: SessionStatus.activa,
+      costo: double.parse(costoText),
       notas:
           _notasController.text.trim().isEmpty
               ? null
@@ -307,6 +314,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                             ),
                             maxLines: 2,
                           ),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller:
                                 _notasController, // Controlador para notas
@@ -393,14 +401,23 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                           TextFormField(
                             controller:
                                 _costoController, // Controlador para costo
-                            keyboardType: TextInputType.numberWithOptions(
+                            keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
-                              labelText: 'Costo (opcional)',
+                              labelText: 'Costo *',
                               border: OutlineInputBorder(),
                               prefixText: '\$ ',
                             ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'El costo es obligatorio';
+                              }
+                              if (double.tryParse(value) == null) {
+                                return 'Por favor ingrese un número válido';
+                              }
+                              return null; // El valor es válido
+                            },
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<SessionType>(
@@ -509,8 +526,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         return 'Pareja';
       case SessionType.grupal:
         return 'Grupal';
-      case SessionType.seguimiento:
-        return 'Seguimiento';
     }
   }
 }

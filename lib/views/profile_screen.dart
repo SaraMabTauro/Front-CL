@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_habits/controllers/journaling_controller.dart';
 import 'package:smart_habits/controllers/task_controller.dart';
 import '../controllers/auth_controller.dart';
 

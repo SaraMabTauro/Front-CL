@@ -1,6 +1,5 @@
-enum SessionStatus { programada, enProgreso, completada, cancelada, activa }
-
-enum SessionType { individual, pareja, grupal, seguimiento }
+enum SessionStatus { activa, finalizada, cancelada }
+enum SessionType { individual, pareja, grupal }
 
 class TherapySession {
   final int id;
@@ -51,7 +50,7 @@ class TherapySession {
       ),
       estado: SessionStatus.values.firstWhere(
         (e) => e.name == json['estado'],
-        orElse: () => SessionStatus.programada, // Valor po
+        orElse: () => SessionStatus.activa, // Valor po
       ),
       costo: double.tryParse(json['costo']?.toString() ?? '0.0') ?? 0.0,
       notas: json['notas'],
@@ -87,7 +86,7 @@ class CreateSessionRequest {
   final DateTime fechaHora;
   final int duracionMinutos;
   final SessionType tipo;
-  final double costo;
+  final double? costo;
   final String? notas;
   final String? objetivos;
   final SessionStatus estado;
@@ -102,7 +101,7 @@ class CreateSessionRequest {
     required this.tipo,
     this.notas,
     this.objetivos,
-    this.costo = 0.0,
+    this.costo,
     required this.estado,
   });
 
@@ -112,10 +111,13 @@ class CreateSessionRequest {
       'psychologistId': psychologistId,
       'titulo': titulo,
       'descripcion': descripcion,
-      'fechaHora': fechaHora.toIso8601String(), // <-- CLAVE CORREGIDA
+      'fechaHora': fechaHora.toIso8601String(),
       'duracionMinutos': duracionMinutos,
-      'tipo': tipo.toString().split('.').last,
-      'estado': estado.toString().split('.').last, // <-- CAMPO AÑADIDO
+      'tipo': tipo.name,
+      'estado': estado.name,
+      'costo': costo, // <-- ¡LA LÍNEA QUE FALTABA!
+      'notas': notas,
+      'objetivos': objetivos, // <-- CAMPO AÑADIDO
     };
   }
 }

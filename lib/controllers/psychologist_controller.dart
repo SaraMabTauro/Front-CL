@@ -887,4 +887,35 @@ class PsychologistController extends ChangeNotifier {
     await _storage.delete(key: AppConstants.tokenKey);
     notifyListeners();
   }
+  
+  Future<bool> generateAIAnalysis(AIAnalysisRequest request) async {
+    _setLoading(true);
+    _setError(null);
+    notifyListeners();
+
+    try {
+      // Llamamos al nuevo método POST en nuestro servicio de IA
+      final newAnalysis = await AIService.generateNewAnalysis(request);
+
+      if (newAnalysis != null) {
+        // --- LÓGICA DE ACTUALIZACIÓN DE ESTADO ---
+        // Después de generar un nuevo análisis, refrescamos la lista completa
+        // para asegurarnos de que tenemos todos los datos actualizados.
+        await getCouplesAnalysis();
+        
+        _setSuccess('Análisis generado exitosamente');
+        _setLoading(false);
+        // notifyListeners() ya es llamado por getCouplesAnalysis
+        return true;
+      } else {
+        _setError('No se recibió un análisis válido del servidor.');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
 }

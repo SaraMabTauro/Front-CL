@@ -32,24 +32,18 @@ class TareaIndividual extends Tarea {
   final DateTime? actualizadoEn;
 
   TareaIndividual({
-    int? id,
-    required int psicologoId,
+    super.id,
+    required super.psicologoId,
     required this.clienteId, // Se inicializa aquí
-    required String titulo,
-    required String descripcion,
-    required DateTime fechaLimite,
-    required String estado,
+    required super.titulo,
+    required super.descripcion,
+    required super.fechaLimite,
+    required super.estado,
     this.completadoEn,
     this.creadoEn,
     this.actualizadoEn,
   }) : super(
          // Se pasan los valores comunes al constructor de Tarea
-         id: id,
-         psicologoId: psicologoId,
-         titulo: titulo,
-         descripcion: descripcion,
-         fechaLimite: fechaLimite,
-         estado: estado,
          type: TaskType.individual,
        );
 
@@ -86,20 +80,14 @@ class TareaPareja extends Tarea {
   final int parejaId; // Campo específico
 
   TareaPareja({
-    int? id,
-    required int psicologoId,
+    super.id,
+    required super.psicologoId,
     required this.parejaId, // Se inicializa aquí
-    required String titulo,
-    required String descripcion,
-    required DateTime fechaLimite,
-    required String estado,
+    required super.titulo,
+    required super.descripcion,
+    required super.fechaLimite,
+    required super.estado,
   }) : super(
-         id: id,
-         psicologoId: psicologoId,
-         titulo: titulo,
-         descripcion: descripcion,
-         fechaLimite: fechaLimite,
-         estado: estado,
          type: TaskType.couple,
        );
 

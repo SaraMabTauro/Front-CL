@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../controllers/psychologist_controller.dart';
-import 'package:intl/intl.dart'; // Necesitarás este paquete para formatear fechas
+import 'package:intl/intl.dart'; 
 
 class PsychologistProfileView extends StatefulWidget {
-  const PsychologistProfileView({Key? key}) : super(key: key);
+  const PsychologistProfileView({super.key});
 
   @override
   _PsychologistProfileViewState createState() =>
@@ -30,16 +30,12 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
   @override
   void initState() {
     super.initState();
-    // CORRECIÓN: La carga de datos debe ocurrir después de que el widget se construya por primera vez.
-    // Usar postFrameCallback es una forma segura de hacerlo.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserData();
     });
   }
 
-  // CORRECIÓN: Lógica de carga de datos simplificada y correcta.
   void _loadUserData() {
-    // Obtenemos el controlador, no el modelo directamente.
     final psychController = Provider.of<PsychologistController>(
       context,
       listen: false,
@@ -65,10 +61,9 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
     }
   }
 
-  // CORRECIÓN: Lógica de guardado completamente reescrita.
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
-      return; // Si el formulario no es válido, no hacemos nada.
+      return; 
     }
 
     setState(() => _isLoading = true);
@@ -94,15 +89,9 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
       'telefono': _phoneController.text.trim(),
     };
 
-    // Llamamos al método correcto en el controlador
     final success = await psychController.updatePsychologist(psychologist.id, updatedData);
 
-    // Lógica para subir la imagen (si se seleccionó una)
-    // if (_selectedImage != null) {
-    //   await psychController.updateProfileImage(psychologist.id, _selectedImage!);
-    // }
-
-    if (mounted) { // Verificar que el widget todavía está en el árbol
+    if (mounted) { 
       setState(() {
         _isLoading = false;
         if (success) {
@@ -124,7 +113,7 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
       _isEditing = false;
       _selectedImage = null;
     });
-    _loadUserData(); // Recargamos los datos originales
+    _loadUserData(); 
   }
 
   @override
@@ -146,7 +135,6 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
             ),
         ],
       ),
-      // CORRECIÓN: Usamos el PsychologistController como única fuente de verdad.
       body: Consumer<PsychologistController>(
         builder: (context, psychController, child) {
           final psychologist = psychController.currentPsychologist;
@@ -176,7 +164,6 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
                           backgroundColor: const Color(
                             0xFF595082,
                           ).withOpacity(0.1),
-                          // CORRECIÓN: Lógica de imagen simplificada y segura
                           backgroundImage:
                               _selectedImage != null
                                   ? FileImage(_selectedImage!) as ImageProvider
@@ -262,12 +249,14 @@ class _PsychologistProfileViewState extends State<PsychologistProfileView> {
                     enabled: _isEditing,
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'El correo es requerido';
+                      }
                       if (!RegExp(
                         r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      ).hasMatch(value))
+                      ).hasMatch(value)) {
                         return 'Ingrese un correo válido';
+                      }
                       return null;
                     },
                   ),

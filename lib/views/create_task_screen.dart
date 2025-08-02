@@ -4,8 +4,6 @@ import 'package:smart_habits/models/task_model.dart';
 import '../controllers/psychologist_controller.dart';
 import '../core/constants.dart';
 import '../controllers/auth_controller.dart';
-import '../models/user_model.dart';
-import '../models/psychologist_models.dart';
 
 // Enum para controlar qué formulario se muestra
 enum TaskAssignmentType { individual, couple }

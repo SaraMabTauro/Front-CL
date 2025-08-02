@@ -17,7 +17,7 @@ class ApiService {
     return await _storage.read(key: AppConstants.tokenKey);
   }
 
-  static Map<String, String> _getHeaders({bool includeAuth = true}) {
+  static Map<String, String> _getHeaders() {
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'User-Agent': 'insomnia/11.2.0',

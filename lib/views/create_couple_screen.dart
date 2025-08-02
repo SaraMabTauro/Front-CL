@@ -14,17 +14,14 @@ class CreateCoupleScreen extends StatefulWidget {
 class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores para Cliente 1
   final _nombreCliente1Controller = TextEditingController();
   final _apellidoCliente1Controller = TextEditingController();
   final _correoCliente1Controller = TextEditingController();
 
-  // Controladores para Cliente 2
   final _nombreCliente2Controller = TextEditingController();
   final _apellidoCliente2Controller = TextEditingController();
   final _correoCliente2Controller = TextEditingController();
 
-  // Controlador para objetivos
   final _objetivosController = TextEditingController();
 
   @override
@@ -40,12 +37,10 @@ class _CreateCoupleScreenState extends State<CreateCoupleScreen> {
   }
 
   Future<void> _createCouple() async {
-    // 1. Valida el formulario antes de hacer nada
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Obtén los controladores. No necesitas el authController aquí dentro.
     final psychController = Provider.of<PsychologistController>(
       context,
       listen: false,

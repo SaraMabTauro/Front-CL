@@ -6,11 +6,11 @@ import '../models/ia_analysis_model.dart';
 import '../models/session_model.dart';
 import 'package:collection/collection.dart';
 import '../controllers/auth_controller.dart';
-import '../models/task_model.dart'; 
+import '../models/task_model.dart';
+import '../views/detail_analysis_screen.dart/AnalysisDetailScreen';
 
 class PsychologistDashboardScreen extends StatefulWidget {
   const PsychologistDashboardScreen({super.key});
-
   @override
   State<PsychologistDashboardScreen> createState() =>
       _PsychologistDashboardScreenState();
@@ -750,17 +750,22 @@ class _DetailedCoupleCard extends StatelessWidget {
               alignment: Alignment.bottomRight,
               child: ElevatedButton.icon(
                 onPressed: () async {
+                  _showGenerateAnalysisDialog(context, couple.id);
 
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (context) => const AlertDialog(
-                      content: Column(mainAxisSize: MainAxisSize.min, children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Actualizando análisis...'),
-                      ]),
-                    ),
+                    builder:
+                        (context) => const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('Actualizando análisis...'),
+                            ],
+                          ),
+                        ),
                   );
 
                   final psychController = Provider.of<PsychologistController>(
@@ -770,10 +775,7 @@ class _DetailedCoupleCard extends StatelessWidget {
                   await psychController.getCouplesAnalysis();
 
                   if (context.mounted) {
-                    Navigator.of(context).pop(); // Cerramos el diálogo de carga
-
-                    // Mostramos un SnackBar con el resultado.
-                    // Verificamos si hubo un error durante la carga.
+                    Navigator.of(context).pop();
                     if (psychController.errorMessage == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -802,6 +804,87 @@ class _DetailedCoupleCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showGenerateAnalysisDialog(BuildContext context, int coupleId) {
+    showDialog(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Generar Nuevo Análisis'),
+            content: const Text(
+              'Esto solicitará un nuevo análisis a la IA basado en los datos más recientes. ¿Desea continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Cerramos el diálogo de confirmación
+                  Navigator.of(dialogContext).pop();
+
+                  // Mostramos un diálogo de "cargando"
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder:
+                        (context) => const AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('Generando análisis con IA...'),
+                            ],
+                          ),
+                        ),
+                  );
+
+                  // Creamos el request
+                  final request = AIAnalysisRequest(
+                    coupleId: coupleId,
+                    analysisType: 'comprehensive', // O el tipo que elijas
+                    parameters: {
+                      'includeRecommendations': true,
+                      'confidenceThreshold': 0.7,
+                      'analysisDepth': 'detailed',
+                    },
+                  );
+
+                  // Obtenemos el controlador y llamamos al método
+                  final psychController = Provider.of<PsychologistController>(
+                    context,
+                    listen: false,
+                  );
+                  final success = await psychController.generateAIAnalysis(
+                    request,
+                  );
+
+                  // Cerramos el diálogo de "cargando"
+                  if (context.mounted) Navigator.of(context).pop();
+
+                  // Mostramos el resultado
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? 'Análisis generado exitosamente'
+                              : psychController.errorMessage ??
+                                  'Error al generar análisis',
+                        ),
+                        backgroundColor: success ? Colors.green : Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Generar'),
+              ),
+            ],
+          ),
     );
   }
 
@@ -1181,7 +1264,12 @@ class _AnalysisCard extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Navegar a vista detallada del análisis
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder:
+                          (context) => AnalysisDetailScreen(analysis: analysis),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.visibility),
                 label: const Text('Ver Análisis Detallado'),
@@ -1254,7 +1342,11 @@ class _TasksManagement extends StatelessWidget {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.assignment, color: Color(0xFF595082), size: 28),
+                      Icon(
+                        Icons.assignment,
+                        color: Color(0xFF595082),
+                        size: 28,
+                      ),
                       SizedBox(width: 12),
                       Text(
                         'Gestión de Tareas',
@@ -1282,9 +1374,7 @@ class _TasksManagement extends StatelessWidget {
 
             // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
             // 2. El Expanded ahora tiene UN SOLO child, que es el resultado del método _buildTaskList.
-            Expanded(
-              child: _buildTaskList(psychController),
-            ),
+            Expanded(child: _buildTaskList(psychController)),
           ],
         );
       },
@@ -1300,7 +1390,7 @@ class _TasksManagement extends StatelessWidget {
     if (psychController.isLoading && allTasks.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     // Caso 2: No hay tareas asignadas
     if (allTasks.isEmpty) {
       return const Center(
@@ -1309,9 +1399,15 @@ class _TasksManagement extends StatelessWidget {
           children: [
             Icon(Icons.assignment_late_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('No hay tareas asignadas', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            Text(
+              'No hay tareas asignadas',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
             SizedBox(height: 8),
-            Text('Presiona el botón "+" para crear una nueva.', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Text(
+              'Presiona el botón "+" para crear una nueva.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -1331,9 +1427,14 @@ class _TasksManagement extends StatelessWidget {
               task.type == TaskType.individual ? Icons.person : Icons.group,
               color: const Color(0xFF595082),
             ),
-            title: Text(task.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              task.titulo,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: Text('Estado: ${task.estado}'),
-            trailing: Text('Vence: ${task.fechaLimite.day}/${task.fechaLimite.month}'),
+            trailing: Text(
+              'Vence: ${task.fechaLimite.day}/${task.fechaLimite.month}',
+            ),
             onTap: () {
               // TODO: Navegar a una pantalla de detalle de tarea para el psicólogo
             },
@@ -1343,8 +1444,6 @@ class _TasksManagement extends StatelessWidget {
     );
   }
 }
-
-
 
 class _SessionsManagement extends StatelessWidget {
   const _SessionsManagement();
@@ -1562,12 +1661,8 @@ class _SessionCard extends StatelessWidget {
 
   Color _getStatusColor(SessionStatus status) {
     switch (status) {
-      case SessionStatus.programada:
-        return Colors.blue;
-      case SessionStatus.enProgreso:
+      case SessionStatus.finalizada:
         return Colors.orange;
-      case SessionStatus.completada:
-        return Colors.green;
       case SessionStatus.cancelada:
         return Colors.red;
       case SessionStatus.activa:

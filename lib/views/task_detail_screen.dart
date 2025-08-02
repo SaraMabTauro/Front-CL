@@ -223,26 +223,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  if (widget.task.fechaLimite != null) ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 16,
+                  ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Fecha límite: ${_formatDate(widget.task.fechaLimite)}',
+                        style: TextStyle(
+                          fontSize: 14,
                           color: Colors.grey[600],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Fecha límite: ${_formatDate(widget.task.fechaLimite)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                   const Divider(),
                   const SizedBox(height: 16),
