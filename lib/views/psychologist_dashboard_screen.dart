@@ -7,7 +7,7 @@ import '../models/session_model.dart';
 import 'package:collection/collection.dart';
 import '../controllers/auth_controller.dart';
 import '../models/task_model.dart';
-import '../views/detail_analysis_screen.dart/AnalysisDetailScreen';
+import '../views/detail_analysis_screen.dart';
 
 class PsychologistDashboardScreen extends StatefulWidget {
   const PsychologistDashboardScreen({super.key});
